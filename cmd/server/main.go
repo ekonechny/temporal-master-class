@@ -13,8 +13,8 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"temporal-master-class/generated/server"
-	"temporal-master-class/generated/temporal"
+	"temporal-master-class/internal/generated/server"
+	"temporal-master-class/internal/generated/temporal"
 )
 
 var (

@@ -10,7 +10,8 @@ init:
 gen: gen-temporal gen-server
 
 gen-temporal:
-	protoc \
+	@mkdir -p "generated/temporal"
+	@protoc \
      -I ./proto \
      -I ${GOPATH}/pkg/mod/github.com/cludden/protoc-gen-go-temporal@${PROTOC_GEN_GO_TEMPORAL_VERSION}/proto \
      --go_out=../ \
@@ -20,10 +21,11 @@ gen-temporal:
      --go_temporal_opt="cli-categories=true" \
      --go_temporal_opt="cli-enabled=true" \
      --go_temporal_opt="workflow-update-enabled=true" \
-     proto/temporal.proto
+     proto/common.proto proto/processing.proto proto/customer.proto proto/checkout.proto
 
 gen-server:
-	protoc \
+	@mkdir -p "generated/server"
+	@protoc \
      -I ./proto \
      -I ${GOPATH}/pkg/mod/github.com/cludden/protoc-gen-go-temporal@${PROTOC_GEN_GO_TEMPORAL_VERSION}/proto \
      --go_out=../ \
@@ -41,7 +43,7 @@ deps:
 	go mod tidy
 
 worker:
-	go run worker/main.go worker
+	go run cmd/worker/main.go worker
 
 server:
-	go run server/main.go
+	go run cmd/server/main.go

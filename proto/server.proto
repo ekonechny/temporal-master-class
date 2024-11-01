@@ -3,9 +3,10 @@ syntax="proto3";
 package server;
 
 import "google/protobuf/empty.proto";
-import "temporal.proto";
+import "common.proto";
+import "customer.proto";
 
-option go_package = "temporal-master-class/generated/server";
+option go_package = "temporal-master-class/internal/generated/server";
 
 service Customer {
   // Здесь мы начинаем жизненный цикл пользователя
@@ -73,7 +74,7 @@ message GetCartRequest {
 
 message UpdateCartRequest {
   string customerId = 1;
-  repeated temporal.Product products = 2;
+  repeated temporal.UpdateCartProductRequest products = 2;
 }
 
 message DeleteCartRequest {

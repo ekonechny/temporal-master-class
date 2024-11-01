@@ -1,0 +1,88 @@
+syntax="proto3";
+
+package temporal;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+import "common.proto";
+
+
+option go_package = "temporal-master-class/internal/generated/temporal";
+
+service Processing {
+  option (temporal.v1.service) = {
+    task_queue: "general"
+  };
+
+  rpc ProcessingFlow(ProcessingFlowRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
+      id: 'orders/${! id }'
+      parent_close_policy: PARENT_CLOSE_POLICY_ABANDON
+      query: { ref: "GetOrder" }
+    };
+  }
+
+  rpc GetPayment(PaymentStatusRequest) returns (PaymentStatusResponse) {
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: {seconds: 1200}
+      retry_policy: {
+        max_attempts: 1
+      }
+    };
+  }
+
+  rpc CreateVendorOrder(CreateVendorOrderRequest) returns (CreateVendorOrderResponse) {
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: {seconds: 15}
+      retry_policy: {
+        max_attempts: 5
+      }
+    };
+  }
+
+  rpc GetVendorOrder(VendorOrderRequest) returns (VendorOrderResponse) {
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: {seconds: 15}
+      retry_policy: {
+        max_attempts: 1
+      };
+    };
+  }
+
+  rpc GetOrder(google.protobuf.Empty) returns (Order) {
+    option (temporal.v1.query) = {};
+  };
+}
+
+message ProcessingFlowRequest {
+  string id = 1;
+  Profile customer = 2;
+  Cart cart = 3;
+  PaymentType paymentType = 4;
+}
+
+message PaymentStatusRequest {
+  string id = 1;
+};
+
+message PaymentStatusResponse {
+  string id = 1;
+  PaymentStatus status = 2;
+};
+
+message CreateVendorOrderRequest {};
+
+message CreateVendorOrderResponse {
+  string id = 1;
+  VendorOrderStatus status = 2;
+};
+
+message VendorOrderRequest {
+  string id = 1;
+};
+
+message VendorOrderResponse {
+  string id = 1;
+  VendorOrderStatus status = 2;
+};

@@ -1,0 +1,60 @@
+syntax="proto3";
+
+package temporal;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+import "customer.proto";
+import "common.proto";
+
+
+option go_package = "temporal-master-class/internal/generated/temporal";
+
+service Checkout {
+  option (temporal.v1.service) = {
+    task_queue: "general"
+  };
+
+  rpc CheckoutFlow(CheckoutFlowRequest) returns (Order) {
+    option (temporal.v1.workflow) = {
+      id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
+      id: 'checkout/${! id.or(uuid_v4()) }'
+    };
+  }
+
+  rpc AssortmentReserve(AssortmentReserveRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: { seconds: 4 }
+      retry_policy: {
+        max_attempts: 3
+      }
+    };
+  }
+
+  rpc CreatePayment(CreatePaymentRequest) returns (CreatePaymentResponse) {
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: { seconds: 4 }
+      retry_policy: {
+        max_attempts: 3
+      }
+    };
+  };
+}
+
+message CheckoutFlowRequest {
+  Cart cart = 1;
+  Profile customer = 2;
+  PaymentType paymentType = 3;
+};
+
+message CreatePaymentRequest {
+  int32 price = 1;
+  string customerId = 2;
+  string orderId = 3;
+};
+
+message CreatePaymentResponse {
+  string id = 1;
+  PaymentStatus status = 2;
+  string url = 3;
+};

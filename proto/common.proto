@@ -1,0 +1,60 @@
+syntax="proto3";
+
+package temporal;
+
+option go_package = "temporal-master-class/internal/generated/temporal";
+
+message Product {
+  string id = 1;
+  string name = 2;
+  int32 price = 3;
+  string inn = 4;
+  int32 qty = 5;
+}
+
+message Cart {
+  repeated Product products = 1;
+  int32 total = 2;
+}
+
+message Order {
+  string id = 1;
+  Profile customer = 2;
+  Cart cart = 3;
+  PaymentType paymentType = 4;
+}
+
+message Profile {
+  string id = 1;
+  string name = 2;
+  string phone = 3;
+  Address address = 4;
+};
+
+enum PaymentType {
+  CASH = 0;
+  ONLINE = 1;
+}
+
+message Address {
+  string title = 1;
+  string lat = 2;
+  string long = 3;
+}
+
+
+enum PaymentStatus {
+  PaymentStatusNew = 0;
+  PaymentStatusHold = 1;
+  PaymentStatusCharged = 2;
+  PaymentStatusFailed = 3;
+}
+
+enum VendorOrderStatus {
+  VendorOrderNew = 0;
+  VendorOrderConfirmed = 1;
+  VendorOrderPicking = 2;
+  VendorOrderReady = 3;
+  VendorOrderInDelivery = 4;
+  VendorOrderCancelled = 99;
+}

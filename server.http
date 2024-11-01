@@ -39,9 +39,6 @@ GRPC localhost:50051/server.Customer/UpdateCart
   "customerId": "{{ customerId }}",
   "products": [{
       "id": "E76A2F4B-E6B9-467E-B07A-C71A0A309D8F",
-      "name": "Желейные мишки",
-      "price": 150,
-      "inn": "7709403651",
       "qty": 5
   }]
 }
@@ -58,7 +55,7 @@ GRPC localhost:50051/server.Customer/Checkout
 
 {
   "customerId": "{{ customerId }}",
-  "paymentType": 0
+  "paymentType": 1
 }
 
 > {%
