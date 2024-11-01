@@ -4,6 +4,8 @@ package temporal;
 
 option go_package = "temporal-master-class/internal/generated/temporal";
 
+import "google/protobuf/timestamp.proto";
+
 message Product {
   string id = 1;
   string name = 2;
@@ -15,6 +17,7 @@ message Product {
 message Cart {
   repeated Product products = 1;
   int32 total = 2;
+  string id = 3;
 }
 
 message Order {
@@ -22,6 +25,8 @@ message Order {
   Profile customer = 2;
   Cart cart = 3;
   PaymentType paymentType = 4;
+  google.protobuf.Timestamp createdAt = 5;
+  google.protobuf.Timestamp updatedAt = 6;
 }
 
 message Profile {

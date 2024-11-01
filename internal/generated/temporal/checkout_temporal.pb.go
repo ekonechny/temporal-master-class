@@ -1365,7 +1365,7 @@ func newCheckoutCommands(options ...*CheckoutCliOptions) ([]*v2.Command, error) 
 				},
 				&v2.StringFlag{
 					Name:     "cart",
-					Usage:    "set the value of the operation's \"Cart\" parameter (json-encoded: {products: <temporal.Product>, total: <int32>})",
+					Usage:    "set the value of the operation's \"Cart\" parameter (json-encoded: {products: <temporal.Product>, total: <int32>, id: <string>})",
 					Category: "INPUT",
 				},
 				&v2.StringFlag{

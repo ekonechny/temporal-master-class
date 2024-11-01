@@ -10,7 +10,6 @@ init:
 gen: gen-temporal gen-server
 
 gen-temporal:
-	@mkdir -p "generated/temporal"
 	@protoc \
      -I ./proto \
      -I ${GOPATH}/pkg/mod/github.com/cludden/protoc-gen-go-temporal@${PROTOC_GEN_GO_TEMPORAL_VERSION}/proto \
@@ -24,7 +23,6 @@ gen-temporal:
      proto/common.proto proto/processing.proto proto/customer.proto proto/checkout.proto
 
 gen-server:
-	@mkdir -p "generated/server"
 	@protoc \
      -I ./proto \
      -I ${GOPATH}/pkg/mod/github.com/cludden/protoc-gen-go-temporal@${PROTOC_GEN_GO_TEMPORAL_VERSION}/proto \

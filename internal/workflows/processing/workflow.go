@@ -7,6 +7,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"temporal-master-class/internal/generated/temporal"
+	"temporal-master-class/internal/utils"
 )
 
 func Register(ctx workflow.Context, input *temporal.ProcessingFlowWorkflowInput) (temporal.ProcessingFlowWorkflow, error) {
@@ -16,6 +17,7 @@ func Register(ctx workflow.Context, input *temporal.ProcessingFlowWorkflowInput)
 			Customer:    input.Req.Customer,
 			Cart:        input.Req.Cart,
 			PaymentType: input.Req.PaymentType,
+			CreatedAt:   utils.TimeToTimestamp(workflow.Now(ctx)),
 		},
 	}, nil
 }
