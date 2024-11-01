@@ -8,16 +8,16 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 
-	tmc "temporal-master-class"
 	"temporal-master-class/generated/temporal"
+
+	tmc "temporal-master-class"
 )
 
 func main() {
-	app, err := temporal.NewOrderCli(
-		temporal.NewOrderCliOptions().WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
-			w := worker.New(c, temporal.OrderTaskQueue, worker.Options{})
-			//pb.RegisterOrderActivities(w, &crud.Activity{})
-			temporal.RegisterCreateOrderWorkflow(w, tmc.Register)
+	app, err := temporal.NewCustomerCli(
+		temporal.NewCustomerCliOptions().WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
+			w := worker.New(c, temporal.CustomerTaskQueue, worker.Options{})
+			temporal.RegisterCustomerFlowWorkflow(w, tmc.Register)
 			return w, nil
 		}),
 	)

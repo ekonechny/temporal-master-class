@@ -1,32 +1,70 @@
-### Create order
-GRPC localhost:50051/server.Order/Create
+### Run workflow
+GRPC localhost:50051/server.Customer/NewCustomer
 
 {
-  "id": "da789e50-9be2-424e-b379-cd7aaa12eb75",
-  "address": "Улица Пушкина, дом Колотушкина",
+  "name": "Джо Персиков",
+  "phone": "79650843636"
+}
+
+> {%
+    client.test("Checkout executed successfully", function() {
+        client.assert(response.status === 207, `Status is ${response.status}`);
+        client.assert(response.body.hasOwnProperty("id"), "Response does not contain identifier");
+        client.assert(response.body.id.length > 0, "id is empty");
+        client.global.set("customerId", response.body.id);
+    });
+%}
+
+### Set address
+GRPC localhost:50051/server.Customer/SetAddress
+
+{
+  "customerId": "{{ customerId }}",
+  "title": "Улица Пушкина, Дом Колотушкина",
+  "lat": "59.93863",
+  "long": "30.31413"
+}
+
+### Get profile
+GRPC localhost:50051/server.Customer/GetProfile
+
+{
+  "id": "{{ customerId }}"
+}
+
+### Update cart
+GRPC localhost:50051/server.Customer/UpdateCart
+
+{
+  "customerId": "{{ customerId }}",
   "products": [{
-    "id": "111",
-    "name": "Молоко из-под Коровы",
-    "qty": 2,
-    "price": 70
-  }, {
-    "id": "222",
-    "name": "Печеньки, которыми тыкают в молоко",
-    "qty": 7,
-    "price": 90
+      "id": "E76A2F4B-E6B9-467E-B07A-C71A0A309D8F",
+      "name": "Желейные мишки",
+      "price": 150,
+      "inn": "7709403651",
+      "qty": 5
   }]
 }
 
-### Get order
-GRPC localhost:50051/server.Order/Read
+### Get cart
+GRPC localhost:50051/server.Customer/GetCart
 
 {
-  "id": "da789e50-9be2-424e-b379-cd7aaa12eb75"
+  "customerId": "{{ customerId }}"
 }
 
-### Delete order
-GRPC localhost:50051/server.Order/Delete
+### Checkout
+GRPC localhost:50051/server.Customer/Checkout
 
 {
-  "id": "orders/da789e50-9be2-424e-b379-cd7aaa12eb75"
+  "customerId": "{{ customerId }}",
+  "paymentType": 0
 }
+
+> {%
+    client.test("Checkout executed successfully", function() {
+        client.assert(response.status === 207, `Status is ${response.status}`);
+        client.assert(response.body.hasOwnProperty("id"), "Response does not contain identifier");
+        client.assert(response.body.id.length > 0, "id is empty");
+    });
+%}

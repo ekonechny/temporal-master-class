@@ -1,0 +1,131 @@
+syntax="proto3";
+
+package temporal;
+
+import "google/protobuf/empty.proto";
+import "temporal/v1/temporal.proto";
+
+option go_package = "temporal-master-class/generated/temporal";
+
+service Customer {
+  option (temporal.v1.service) = {
+    task_queue: "root-v1"
+  };
+
+  rpc CustomerFlow(CustomerFlowRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.workflow) = {
+      id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
+      id: 'customers/${! customerId.or(id.or(uuid_v4())) }'
+      // profile
+      query: { ref: "GetProfile" }
+      update: { ref: "UpdateProfile" }
+      signal: { ref: "DeleteProfile" }
+
+      // address
+      signal: { ref: "SetAddress" }
+
+      // cart
+      query: { ref: "GetCart" }
+      update: { ref: "UpdateCart" }
+      signal: { ref: "DeleteCart" }
+
+      // order
+      update: { ref: "Checkout" }
+    };
+  }
+
+  // Profile
+  rpc GetProfile(google.protobuf.Empty) returns (Profile) {
+    option (temporal.v1.query) = {};
+  }
+
+  rpc UpdateProfile(UpdateProfileRequest) returns (Profile) {
+    option (temporal.v1.update) = {};
+  }
+
+  rpc DeleteProfile(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  // Address
+  rpc SetAddress(SetAddressRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  // Cart
+  rpc GetCart(google.protobuf.Empty) returns (Cart) {
+    option (temporal.v1.query) = {};
+  }
+
+  rpc UpdateCart(UpdateCartRequest) returns (Cart) {
+    option (temporal.v1.update) = {};
+  }
+
+  rpc DeleteCart(google.protobuf.Empty) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
+  }
+
+  rpc Checkout(CheckoutRequest) returns (Order) {
+    option (temporal.v1.update) = {};
+  }
+}
+
+message CustomerFlowRequest {
+  string name = 1;
+  string phone = 2;
+};
+
+message Address {
+  string title = 1;
+  string lat = 2;
+  string long = 3;
+}
+
+message Profile {
+  string id = 1;
+  string name = 2;
+  string phone = 3;
+  Address address = 4;
+};
+
+
+message UpdateProfileRequest {
+  string name = 1;
+}
+
+message SetAddressRequest {
+  Address address = 1;
+}
+
+message UpdateCartRequest {
+  repeated Product products = 1;
+}
+
+message CheckoutRequest {
+    PaymentType paymentType = 1;
+}
+
+enum PaymentType {
+  CASH = 0;
+  ONLINE = 1;
+}
+
+message Order {
+  string id = 1;
+  Profile customer = 2;
+  Cart cart = 3;
+  PaymentType paymentType = 4;
+}
+
+message Product {
+  string id = 1;
+  string name = 2;
+  int32 price = 3;
+  string inn = 4;
+  int32 qty = 5;
+}
+
+message Cart {
+  repeated Product products = 1;
+  int32 total = 2;
+}

@@ -3,26 +3,96 @@ syntax="proto3";
 package server;
 
 import "google/protobuf/empty.proto";
-import "order.proto";
+import "temporal.proto";
 
 option go_package = "temporal-master-class/generated/server";
 
-service Order {
-  rpc Create(order.CreateOrderRequest) returns (order.Order) {}
-  rpc Read(ReadOrderRequest) returns (order.Order) {}
-  rpc Update(UpdateOrderRequest) returns (order.Order) {}
-  rpc Delete(DeleteOrderRequest) returns (google.protobuf.Empty) {}
+service Customer {
+  // Здесь мы начинаем жизненный цикл пользователя
+  rpc NewCustomer(NewCustomerRequest) returns (temporal.Profile) {}
+
+  // Получить профиль пользователя
+  rpc GetProfile(GetProfileRequest) returns (temporal.Profile) {}
+
+  // Обновить профиль пользователя
+  rpc UpdateProfile(UpdateProfileRequest) returns (temporal.Profile) {}
+
+  // Удалить профиль пользователя
+  rpc DeleteProfile(DeleteProfileRequest) returns (google.protobuf.Empty) {}
+
+  // Задать юзеру адрес
+  rpc SetAddress(SetAddressRequest) returns (google.protobuf.Empty) {}
+
+  // Получить корзину пользователя
+  rpc GetCart(GetCartRequest) returns (temporal.Cart) {}
+
+  // Обновить корзина пользователя целиком
+  rpc UpdateCart(UpdateCartRequest) returns (temporal.Cart) {}
+
+  // Очистить корзину пользователя
+  rpc DeleteCart(DeleteCartRequest) returns (google.protobuf.Empty) {}
+
+  // Получить заказ пользователя
+  rpc GetOrder(GetOrderRequest) returns (temporal.Order) {}
+
+  // Получить все заказы пользователя
+  rpc GetOrders(GetOrdersRequest) returns (GetOrdersResponse) {}
+
+  // Создать заказ
+  rpc Checkout(CheckoutRequest) returns (temporal.Order) {}
 }
 
-message ReadOrderRequest {
+message NewCustomerRequest {
+  string name = 1;
+  string phone = 2;
+}
+
+message GetProfileRequest {
   string id = 1;
 }
 
-message UpdateOrderRequest {
+message UpdateProfileRequest {
   string id = 1;
-  order.UpdateOrderRequest body = 2;
+  string name = 2;
 }
 
-message DeleteOrderRequest {
+message DeleteProfileRequest {
   string id = 1;
+}
+
+message SetAddressRequest {
+  string customerId = 1;
+  string title = 2;
+  string lat = 3;
+  string long = 4;
+}
+
+message GetCartRequest {
+  string customerId = 1;
+}
+
+message UpdateCartRequest {
+  string customerId = 1;
+  repeated temporal.Product products = 2;
+}
+
+message DeleteCartRequest {
+  string customerId = 1;
+}
+
+message GetOrderRequest {
+  string customerId = 1;
+}
+
+message GetOrdersRequest {
+  string id = 1;
+}
+
+message GetOrdersResponse {
+  repeated temporal.Order orders = 1;
+}
+
+message CheckoutRequest {
+  string customerId = 1;
+  temporal.PaymentType paymentType = 2;
 }
