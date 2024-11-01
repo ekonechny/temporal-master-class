@@ -63,5 +63,20 @@ GRPC localhost:50051/server.Customer/Checkout
         client.assert(response.status === 207, `Status is ${response.status}`);
         client.assert(response.body.hasOwnProperty("id"), "Response does not contain identifier");
         client.assert(response.body.id.length > 0, "id is empty");
+        client.global.set("orderId", response.body.id);
     });
 %}
+
+### Get order
+GRPC localhost:50051/server.Customer/GetOrder
+
+{
+  "id": "{{ orderId }}"
+}
+
+### Get orders
+GRPC localhost:50051/server.Customer/GetOrders
+
+{
+  "phone": "79650843636"
+}
