@@ -39,6 +39,12 @@ temporal-dev-server:
       --dynamic-config-value "frontend.enableUpdateWorkflowExecutionAsyncAccepted=true" \
       --ui-port 8080
 
+create-search-attributes:
+	temporal operator search-attribute create --namespace "default" \
+            --name="CustomerPhone" --type="Text" \
+            --name="CustomerId" --type="Text" \
+            --name="CustomerAddress" --type="Text"
+
 deps:
 	go mod tidy
 

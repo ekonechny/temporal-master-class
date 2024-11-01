@@ -3,6 +3,7 @@ package processing
 import (
 	"time"
 
+	t "go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 
 	"temporal-master-class/internal/generated/temporal"
@@ -10,6 +11,17 @@ import (
 )
 
 func Register(ctx workflow.Context, input *temporal.ProcessingFlowWorkflowInput) (temporal.ProcessingFlowWorkflow, error) {
+	// Сохраняем индексы для поиска
+	if err := workflow.UpsertTypedSearchAttributes(ctx, CustomerPhone.ValueSet(input.Req.Customer.Phone)); err != nil {
+		return nil, err
+	}
+	if err := workflow.UpsertTypedSearchAttributes(ctx, CustomerId.ValueSet(input.Req.Customer.Id)); err != nil {
+		return nil, err
+	}
+	if err := workflow.UpsertTypedSearchAttributes(ctx, CustomerAddress.ValueSet(input.Req.Customer.Address.Title)); err != nil {
+		return nil, err
+	}
+
 	return &Workflow{
 		order: &temporal.Order{
 			Id:          input.Req.Id,
@@ -22,6 +34,12 @@ func Register(ctx workflow.Context, input *temporal.ProcessingFlowWorkflowInput)
 	}, nil
 }
 
+var (
+	CustomerPhone   = t.NewSearchAttributeKeyString("CustomerPhone")
+	CustomerId      = t.NewSearchAttributeKeyString("CustomerId")
+	CustomerAddress = t.NewSearchAttributeKeyString("CustomerAddress")
+)
+
 type Workflow struct {
 	order   *temporal.Order
 	confirm *temporal.VendorOrderConfirmSignal
@@ -32,6 +50,7 @@ func (w *Workflow) GetOrder() (*temporal.Order, error) {
 }
 
 func (w *Workflow) Execute(ctx workflow.Context) error {
+
 	// Ожидаем подтверждения оплаты для онлайн платежа
 	if w.order.PaymentType == temporal.PaymentType_ONLINE {
 		payment, err := temporal.GetPayment(ctx, &temporal.PaymentStatusRequest{})
@@ -58,8 +77,7 @@ func (w *Workflow) Execute(ctx workflow.Context) error {
 		if w.order.Status > temporal.OrderStatus_OrderStatusReady {
 			break
 		}
-		timerFuture := workflow.NewTimer(ctx, time.Minute*15)
-
+		timerFuture := workflow.NewTimer(ctx, time.Minute)
 		s := workflow.NewSelector(ctx)
 		w.confirm.Select(s, func(request *temporal.VendorOrderConfirmRequest) {
 			w.order.Status = vendorOrderStatusMap[request.Status]
