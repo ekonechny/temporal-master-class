@@ -1,7 +1,6 @@
 package processing
 
 import (
-	"errors"
 	"time"
 
 	"go.temporal.io/sdk/workflow"
@@ -19,11 +18,13 @@ func Register(ctx workflow.Context, input *temporal.ProcessingFlowWorkflowInput)
 			PaymentType: input.Req.PaymentType,
 			CreatedAt:   utils.TimeToTimestamp(workflow.Now(ctx)),
 		},
+		confirm: input.VendorOrderConfirm,
 	}, nil
 }
 
 type Workflow struct {
-	order *temporal.Order
+	order   *temporal.Order
+	confirm *temporal.VendorOrderConfirmSignal
 }
 
 func (w *Workflow) GetOrder() (*temporal.Order, error) {
@@ -38,7 +39,8 @@ func (w *Workflow) Execute(ctx workflow.Context) error {
 			return err
 		}
 		if payment.Status == temporal.PaymentStatus_PaymentStatusFailed {
-			return err
+			w.order.Status = temporal.OrderStatus_OrderStatusCancelled
+			return workflow.ErrCanceled
 		}
 	}
 
@@ -50,22 +52,39 @@ func (w *Workflow) Execute(ctx workflow.Context) error {
 
 	// Ожидаем пока вендор соберет заказ
 	for {
-		if err = workflow.Sleep(ctx, time.Minute); err != nil {
-			return err
+		if w.order.Status == temporal.OrderStatus_OrderStatusCancelled {
+			return workflow.ErrCanceled
 		}
-		vendorOrder, err := temporal.GetVendorOrder(ctx, &temporal.VendorOrderRequest{
-			Id: vendorOrderResponse.Id,
-		})
-		if err != nil {
-			return err
-		}
-		if vendorOrder.Status == temporal.VendorOrderStatus_VendorOrderCancelled {
-			return errors.New("vendor cancel order")
-		}
-		if vendorOrder.Status > temporal.VendorOrderStatus_VendorOrderInDelivery {
+		if w.order.Status > temporal.OrderStatus_OrderStatusReady {
 			break
 		}
+		timerFuture := workflow.NewTimer(ctx, time.Minute*15)
+
+		s := workflow.NewSelector(ctx)
+		w.confirm.Select(s, func(request *temporal.VendorOrderConfirmRequest) {
+			w.order.Status = vendorOrderStatusMap[request.Status]
+		})
+		s.AddFuture(timerFuture, func(workflow.Future) {
+			vendorOrder, err := temporal.GetVendorOrder(ctx, &temporal.VendorOrderRequest{
+				Id: vendorOrderResponse.Id,
+			})
+			if err != nil {
+				workflow.GetLogger(ctx).Error("failed to poll", "err", err.Error())
+			}
+			w.order.Status = vendorOrderStatusMap[vendorOrder.Status]
+		})
+
+		s.Select(ctx)
 	}
 
-	return workflow.Sleep(ctx, time.Minute*5)
+	return nil
+}
+
+var vendorOrderStatusMap = map[temporal.VendorOrderStatus]temporal.OrderStatus{
+	temporal.VendorOrderStatus_VendorOrderStatusNew:        temporal.OrderStatus_OrderStatusConfirmed,
+	temporal.VendorOrderStatus_VendorOrderStatusConfirmed:  temporal.OrderStatus_OrderStatusVendorConfirmed,
+	temporal.VendorOrderStatus_VendorOrderStatusPicking:    temporal.OrderStatus_OrderStatusPicking,
+	temporal.VendorOrderStatus_VendorOrderStatusReady:      temporal.OrderStatus_OrderStatusReady,
+	temporal.VendorOrderStatus_VendorOrderInStatusDelivery: temporal.OrderStatus_OrderStatusInDelivery,
+	temporal.VendorOrderStatus_VendorOrderStatusCancelled:  temporal.OrderStatus_OrderStatusCancelled,
 }

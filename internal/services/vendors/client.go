@@ -13,14 +13,14 @@ type Client struct{}
 func (c *Client) CreateOrder(ctx context.Context, req *temporal.CreateVendorOrderRequest) (*temporal.CreateVendorOrderResponse, error) {
 	return &temporal.CreateVendorOrderResponse{
 		Id:     uuid.NewString(),
-		Status: temporal.VendorOrderStatus_VendorOrderNew,
+		Status: temporal.VendorOrderStatus_VendorOrderStatusNew,
 	}, nil
 }
 
 func (c *Client) GetOrder(ctx context.Context, orderID string) (*temporal.VendorOrderResponse, error) {
 	return &temporal.VendorOrderResponse{
 		Id:     orderID,
-		Status: temporal.VendorOrderStatus_VendorOrderNew,
+		Status: temporal.VendorOrderStatus_VendorOrderStatusNew,
 	}, nil
 }
 

@@ -26,6 +26,10 @@ type srv struct {
 	tcl temporal.CustomerClient
 }
 
+func (s *srv) VendorOrderConfirm(ctx context.Context, request *server.VendorOrderConfirmRequest) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
+}
+
 func (s *srv) GetProfile(ctx context.Context, request *server.GetProfileRequest) (*temporal.Profile, error) {
 	return s.tcl.GetProfile(
 		ctx,

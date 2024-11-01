@@ -20,6 +20,8 @@ service Processing {
       id: 'orders/${! id }'
       parent_close_policy: PARENT_CLOSE_POLICY_ABANDON
       query: { ref: "GetOrder" }
+
+      signal: { ref: 'VendorOrderConfirm' }
     };
   }
 
@@ -52,6 +54,11 @@ service Processing {
 
   rpc GetOrder(google.protobuf.Empty) returns (Order) {
     option (temporal.v1.query) = {};
+  };
+
+  // Подтверждение заказа
+  rpc VendorOrderConfirm(VendorOrderConfirmRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.signal) = {};
   };
 }
 
@@ -86,3 +93,7 @@ message VendorOrderResponse {
   string id = 1;
   VendorOrderStatus status = 2;
 };
+
+message VendorOrderConfirmRequest {
+  VendorOrderStatus status = 1;
+}

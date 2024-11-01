@@ -27,6 +27,7 @@ message Order {
   PaymentType paymentType = 4;
   google.protobuf.Timestamp createdAt = 5;
   google.protobuf.Timestamp updatedAt = 6;
+  OrderStatus status = 7;
 }
 
 message Profile {
@@ -56,10 +57,22 @@ enum PaymentStatus {
 }
 
 enum VendorOrderStatus {
-  VendorOrderNew = 0;
-  VendorOrderConfirmed = 1;
-  VendorOrderPicking = 2;
-  VendorOrderReady = 3;
-  VendorOrderInDelivery = 4;
-  VendorOrderCancelled = 99;
+  VendorOrderStatusNew = 0;
+  VendorOrderStatusConfirmed = 1;
+  VendorOrderStatusPicking = 2;
+  VendorOrderStatusReady = 3;
+  VendorOrderInStatusDelivery = 4;
+  VendorOrderStatusCancelled = 99;
+}
+
+enum OrderStatus {
+    OrderStatusNew = 0;
+    OrderStatusConfirmed = 1;
+    OrderStatusVendorConfirmed = 2;
+    OrderStatusPicking = 3;
+    OrderStatusReady = 4;
+    OrderStatusInDelivery = 5;
+    OrderStatusDelivered = 6;
+    OrderStatusDone = 7;
+    OrderStatusCancelled = 99;
 }

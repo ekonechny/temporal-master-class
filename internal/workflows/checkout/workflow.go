@@ -38,7 +38,6 @@ func (w *Workflow) Execute(ctx workflow.Context) (*temporal.Order, error) {
 			_ = temporal.AssortmentReserveCancel(ctx, &temporal.AssortmentReserveRequest{Products: reserveProducts})
 		}
 	}()
-
 	if w.req.PaymentType == temporal.PaymentType_ONLINE {
 		p, err := temporal.CreatePayment(ctx, &temporal.CreatePaymentRequest{})
 		if err != nil {

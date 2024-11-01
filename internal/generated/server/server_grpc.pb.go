@@ -7,12 +7,12 @@
 package server
 
 import (
-	temporal "temporal-master-class/internal/generated/temporal"
 	context "context"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	temporal "temporal-master-class/internal/generated/temporal"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -21,17 +21,18 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Customer_NewCustomer_FullMethodName   = "/server.Customer/NewCustomer"
-	Customer_GetProfile_FullMethodName    = "/server.Customer/GetProfile"
-	Customer_UpdateProfile_FullMethodName = "/server.Customer/UpdateProfile"
-	Customer_DeleteProfile_FullMethodName = "/server.Customer/DeleteProfile"
-	Customer_SetAddress_FullMethodName    = "/server.Customer/SetAddress"
-	Customer_GetCart_FullMethodName       = "/server.Customer/GetCart"
-	Customer_UpdateCart_FullMethodName    = "/server.Customer/UpdateCart"
-	Customer_DeleteCart_FullMethodName    = "/server.Customer/DeleteCart"
-	Customer_GetOrder_FullMethodName      = "/server.Customer/GetOrder"
-	Customer_GetOrders_FullMethodName     = "/server.Customer/GetOrders"
-	Customer_Checkout_FullMethodName      = "/server.Customer/Checkout"
+	Customer_NewCustomer_FullMethodName        = "/server.Customer/NewCustomer"
+	Customer_GetProfile_FullMethodName         = "/server.Customer/GetProfile"
+	Customer_UpdateProfile_FullMethodName      = "/server.Customer/UpdateProfile"
+	Customer_DeleteProfile_FullMethodName      = "/server.Customer/DeleteProfile"
+	Customer_SetAddress_FullMethodName         = "/server.Customer/SetAddress"
+	Customer_GetCart_FullMethodName            = "/server.Customer/GetCart"
+	Customer_UpdateCart_FullMethodName         = "/server.Customer/UpdateCart"
+	Customer_DeleteCart_FullMethodName         = "/server.Customer/DeleteCart"
+	Customer_GetOrder_FullMethodName           = "/server.Customer/GetOrder"
+	Customer_GetOrders_FullMethodName          = "/server.Customer/GetOrders"
+	Customer_Checkout_FullMethodName           = "/server.Customer/Checkout"
+	Customer_VendorOrderConfirm_FullMethodName = "/server.Customer/VendorOrderConfirm"
 )
 
 // CustomerClient is the client API for Customer service.
@@ -60,6 +61,8 @@ type CustomerClient interface {
 	GetOrders(ctx context.Context, in *GetOrdersRequest, opts ...grpc.CallOption) (*GetOrdersResponse, error)
 	// Создать заказ
 	Checkout(ctx context.Context, in *CheckoutRequest, opts ...grpc.CallOption) (*temporal.Order, error)
+	// Колбек для подтверждения вендором
+	VendorOrderConfirm(ctx context.Context, in *VendorOrderConfirmRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type customerClient struct {
@@ -180,6 +183,16 @@ func (c *customerClient) Checkout(ctx context.Context, in *CheckoutRequest, opts
 	return out, nil
 }
 
+func (c *customerClient) VendorOrderConfirm(ctx context.Context, in *VendorOrderConfirmRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Customer_VendorOrderConfirm_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // CustomerServer is the server API for Customer service.
 // All implementations must embed UnimplementedCustomerServer
 // for forward compatibility.
@@ -206,6 +219,8 @@ type CustomerServer interface {
 	GetOrders(context.Context, *GetOrdersRequest) (*GetOrdersResponse, error)
 	// Создать заказ
 	Checkout(context.Context, *CheckoutRequest) (*temporal.Order, error)
+	// Колбек для подтверждения вендором
+	VendorOrderConfirm(context.Context, *VendorOrderConfirmRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedCustomerServer()
 }
 
@@ -248,6 +263,9 @@ func (UnimplementedCustomerServer) GetOrders(context.Context, *GetOrdersRequest)
 }
 func (UnimplementedCustomerServer) Checkout(context.Context, *CheckoutRequest) (*temporal.Order, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Checkout not implemented")
+}
+func (UnimplementedCustomerServer) VendorOrderConfirm(context.Context, *VendorOrderConfirmRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VendorOrderConfirm not implemented")
 }
 func (UnimplementedCustomerServer) mustEmbedUnimplementedCustomerServer() {}
 func (UnimplementedCustomerServer) testEmbeddedByValue()                  {}
@@ -468,6 +486,24 @@ func _Customer_Checkout_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Customer_VendorOrderConfirm_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VendorOrderConfirmRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CustomerServer).VendorOrderConfirm(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Customer_VendorOrderConfirm_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CustomerServer).VendorOrderConfirm(ctx, req.(*VendorOrderConfirmRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // Customer_ServiceDesc is the grpc.ServiceDesc for Customer service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -518,6 +554,10 @@ var Customer_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Checkout",
 			Handler:    _Customer_Checkout_Handler,
+		},
+		{
+			MethodName: "VendorOrderConfirm",
+			Handler:    _Customer_VendorOrderConfirm_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

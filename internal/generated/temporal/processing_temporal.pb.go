@@ -58,6 +58,11 @@ const (
 	GetOrderQueryName = "temporal.Processing.GetOrder"
 )
 
+// temporal.Processing signal names
+const (
+	VendorOrderConfirmSignalName = "temporal.Processing.VendorOrderConfirm"
+)
+
 // ProcessingClient describes a client for a(n) temporal.Processing worker
 type ProcessingClient interface {
 	// ProcessingFlow executes a(n) temporal.Processing.ProcessingFlow workflow and blocks until error or response received
@@ -77,6 +82,9 @@ type ProcessingClient interface {
 
 	// temporal.Processing.GetOrder executes a(n) temporal.Processing.GetOrder query
 	GetOrder(ctx context.Context, workflowID string, runID string) (*Order, error)
+
+	// Подтверждение заказа
+	VendorOrderConfirm(ctx context.Context, workflowID string, runID string, signal *VendorOrderConfirmRequest) error
 }
 
 // processingClient implements a temporal client for a temporal.Processing service
@@ -205,6 +213,11 @@ func (c *processingClient) GetOrder(ctx context.Context, workflowID string, runI
 		return nil, err
 	}
 	return &resp, nil
+}
+
+// Подтверждение заказа
+func (c *processingClient) VendorOrderConfirm(ctx context.Context, workflowID string, runID string, signal *VendorOrderConfirmRequest) error {
+	return c.client.SignalWorkflow(ctx, workflowID, runID, VendorOrderConfirmSignalName, signal)
 }
 
 // ProcessingFlowOptions provides configuration for a temporal.Processing.ProcessingFlow workflow operation
@@ -341,6 +354,9 @@ type ProcessingFlowRun interface {
 
 	// temporal.Processing.GetOrder executes a(n) temporal.Processing.GetOrder query
 	GetOrder(ctx context.Context) (*Order, error)
+
+	// Подтверждение заказа
+	VendorOrderConfirm(ctx context.Context, req *VendorOrderConfirmRequest) error
 }
 
 // processingFlowRun provides an internal implementation of a(n) ProcessingFlowRunRun
@@ -382,6 +398,11 @@ func (r *processingFlowRun) Terminate(ctx context.Context, reason string, detail
 // temporal.Processing.GetOrder executes a(n) temporal.Processing.GetOrder query
 func (r *processingFlowRun) GetOrder(ctx context.Context) (*Order, error) {
 	return r.client.GetOrder(ctx, r.ID(), "")
+}
+
+// Подтверждение заказа
+func (r *processingFlowRun) VendorOrderConfirm(ctx context.Context, req *VendorOrderConfirmRequest) error {
+	return r.client.VendorOrderConfirm(ctx, r.ID(), "", req)
 }
 
 // Reference to generated workflow functions
@@ -435,6 +456,9 @@ func buildProcessingFlow(ctor func(workflow.Context, *ProcessingFlowWorkflowInpu
 	return func(ctx workflow.Context, req *ProcessingFlowRequest) error {
 		input := &ProcessingFlowWorkflowInput{
 			Req: req,
+			VendorOrderConfirm: &VendorOrderConfirmSignal{
+				Channel: workflow.GetSignalChannel(ctx, VendorOrderConfirmSignalName),
+			},
 		}
 		wf, err := ctor(ctx, input)
 		if err != nil {
@@ -454,7 +478,8 @@ func buildProcessingFlow(ctor func(workflow.Context, *ProcessingFlowWorkflowInpu
 
 // ProcessingFlowWorkflowInput describes the input to a(n) temporal.Processing.ProcessingFlow workflow constructor
 type ProcessingFlowWorkflowInput struct {
-	Req *ProcessingFlowRequest
+	Req                *ProcessingFlowRequest
+	VendorOrderConfirm *VendorOrderConfirmSignal
 }
 
 // ProcessingFlowWorkflow describes a(n) temporal.Processing.ProcessingFlow workflow implementation
@@ -681,6 +706,74 @@ func (r *ProcessingFlowChildRun) WaitStart(ctx workflow.Context) (*workflow.Exec
 		return nil, err
 	}
 	return &exec, nil
+}
+
+// VendorOrderConfirm sends a(n) "temporal.Processing.VendorOrderConfirm" signal request to the child workflow
+func (r *ProcessingFlowChildRun) VendorOrderConfirm(ctx workflow.Context, input *VendorOrderConfirmRequest) error {
+	return r.VendorOrderConfirmAsync(ctx, input).Get(ctx, nil)
+}
+
+// VendorOrderConfirmAsync sends a(n) "temporal.Processing.VendorOrderConfirm" signal request to the child workflow
+func (r *ProcessingFlowChildRun) VendorOrderConfirmAsync(ctx workflow.Context, input *VendorOrderConfirmRequest) workflow.Future {
+	return r.Future.SignalChildWorkflow(ctx, VendorOrderConfirmSignalName, input)
+}
+
+// VendorOrderConfirmSignal describes a(n) temporal.Processing.VendorOrderConfirm signal
+type VendorOrderConfirmSignal struct {
+	Channel workflow.ReceiveChannel
+}
+
+// NewVendorOrderConfirmSignal initializes a new temporal.Processing.VendorOrderConfirm signal wrapper
+func NewVendorOrderConfirmSignal(ctx workflow.Context) *VendorOrderConfirmSignal {
+	return &VendorOrderConfirmSignal{Channel: workflow.GetSignalChannel(ctx, VendorOrderConfirmSignalName)}
+}
+
+// Receive blocks until a(n) temporal.Processing.VendorOrderConfirm signal is received
+func (s *VendorOrderConfirmSignal) Receive(ctx workflow.Context) (*VendorOrderConfirmRequest, bool) {
+	var resp VendorOrderConfirmRequest
+	more := s.Channel.Receive(ctx, &resp)
+	return &resp, more
+}
+
+// ReceiveAsync checks for a temporal.Processing.VendorOrderConfirm signal without blocking
+func (s *VendorOrderConfirmSignal) ReceiveAsync() *VendorOrderConfirmRequest {
+	var resp VendorOrderConfirmRequest
+	if ok := s.Channel.ReceiveAsync(&resp); !ok {
+		return nil
+	}
+	return &resp
+}
+
+// ReceiveWithTimeout blocks until a(n) temporal.Processing.VendorOrderConfirm signal is received or timeout expires.
+// Returns more value of false when Channel is closed.
+// Returns ok value of false when no value was found in the channel for the duration of timeout or the ctx was canceled.
+// resp will be nil if ok is false.
+func (s *VendorOrderConfirmSignal) ReceiveWithTimeout(ctx workflow.Context, timeout time.Duration) (resp *VendorOrderConfirmRequest, ok bool, more bool) {
+	resp = &VendorOrderConfirmRequest{}
+	if ok, more = s.Channel.ReceiveWithTimeout(ctx, timeout, &resp); !ok {
+		return nil, false, more
+	}
+	return
+}
+
+// Select checks for a(n) temporal.Processing.VendorOrderConfirm signal without blocking
+func (s *VendorOrderConfirmSignal) Select(sel workflow.Selector, fn func(*VendorOrderConfirmRequest)) workflow.Selector {
+	return sel.AddReceive(s.Channel, func(workflow.ReceiveChannel, bool) {
+		req := s.ReceiveAsync()
+		if fn != nil {
+			fn(req)
+		}
+	})
+}
+
+// Подтверждение заказа
+func VendorOrderConfirmExternal(ctx workflow.Context, workflowID string, runID string, req *VendorOrderConfirmRequest) error {
+	return VendorOrderConfirmExternalAsync(ctx, workflowID, runID, req).Get(ctx, nil)
+}
+
+// Подтверждение заказа
+func VendorOrderConfirmExternalAsync(ctx workflow.Context, workflowID string, runID string, req *VendorOrderConfirmRequest) workflow.Future {
+	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, VendorOrderConfirmSignalName, req)
 }
 
 // ProcessingActivities describes available worker activities
@@ -1509,6 +1602,12 @@ func (c *TestProcessingClient) GetOrder(ctx context.Context, workflowID string, 
 	}
 }
 
+// VendorOrderConfirm executes a temporal.Processing.VendorOrderConfirm signal
+func (c *TestProcessingClient) VendorOrderConfirm(ctx context.Context, workflowID string, runID string, req *VendorOrderConfirmRequest) error {
+	c.env.SignalWorkflow(VendorOrderConfirmSignalName, req)
+	return nil
+}
+
 var _ ProcessingFlowRun = &testProcessingFlowRun{}
 
 // testProcessingFlowRun provides convenience methods for interacting with a(n) temporal.Processing.ProcessingFlow workflow in the test environment
@@ -1563,6 +1662,11 @@ func (r *testProcessingFlowRun) Terminate(ctx context.Context, reason string, de
 // GetOrder executes a temporal.Processing.GetOrder query against a test temporal.Processing.ProcessingFlow workflow
 func (r *testProcessingFlowRun) GetOrder(ctx context.Context) (*Order, error) {
 	return r.client.GetOrder(ctx, r.ID(), r.RunID())
+}
+
+// VendorOrderConfirm executes a temporal.Processing.VendorOrderConfirm signal against a test temporal.Processing.ProcessingFlow workflow
+func (r *testProcessingFlowRun) VendorOrderConfirm(ctx context.Context, req *VendorOrderConfirmRequest) error {
+	return r.client.VendorOrderConfirm(ctx, r.ID(), r.RunID(), req)
 }
 
 // ProcessingCliOptions describes runtime configuration for temporal.Processing cli
@@ -1682,6 +1786,54 @@ func newProcessingCommands(options ...*ProcessingCliOptions) ([]*v2.Command, err
 			},
 		},
 		{
+			Name:                   "vendor-order-confirm",
+			Usage:                  "Подтверждение заказа",
+			Category:               "SIGNALS",
+			UseShortOptionHandling: true,
+			Before:                 opts.before,
+			After:                  opts.after,
+			Flags: []v2.Flag{
+				&v2.StringFlag{
+					Name:     "workflow-id",
+					Usage:    "workflow id",
+					Required: true,
+					Aliases:  []string{"w"},
+				},
+				&v2.StringFlag{
+					Name:    "run-id",
+					Usage:   "run id",
+					Aliases: []string{"r"},
+				},
+				&v2.StringFlag{
+					Name:    "input-file",
+					Usage:   "path to json-formatted input file",
+					Aliases: []string{"f"},
+				},
+				&v2.StringFlag{
+					Name:     "status",
+					Usage:    "set the value of the operation's \"Status\" parameter (VendorOrderStatusNew, VendorOrderStatusConfirmed, VendorOrderStatusPicking, VendorOrderStatusReady, VendorOrderInStatusDelivery, VendorOrderStatusCancelled)",
+					Category: "INPUT",
+				},
+			},
+			Action: func(cmd *v2.Context) error {
+				c, err := opts.clientForCommand(cmd)
+				if err != nil {
+					return fmt.Errorf("error initializing client for command: %w", err)
+				}
+				defer c.Close()
+				client := NewProcessingClient(c)
+				req, err := UnmarshalCliFlagsToVendorOrderConfirmRequest(cmd)
+				if err != nil {
+					return fmt.Errorf("error unmarshalling request: %w", err)
+				}
+				if err := client.VendorOrderConfirm(cmd.Context, cmd.String("workflow-id"), cmd.String("run-id"), req); err != nil {
+					return fmt.Errorf("error sending %q signal: %w", VendorOrderConfirmSignalName, err)
+				}
+				fmt.Println("success")
+				return nil
+			},
+		},
+		{
 			Name:                   "processing-flow",
 			Usage:                  "executes a(n) temporal.Processing.ProcessingFlow workflow",
 			Category:               "WORKFLOWS",
@@ -1794,6 +1946,38 @@ func newProcessingCommands(options ...*ProcessingCliOptions) ([]*v2.Command, err
 		return commands[i].Name < commands[j].Name
 	})
 	return commands, nil
+}
+
+// UnmarshalCliFlagsToVendorOrderConfirmRequest unmarshals a VendorOrderConfirmRequest from command line flags
+func UnmarshalCliFlagsToVendorOrderConfirmRequest(cmd *v2.Context) (*VendorOrderConfirmRequest, error) {
+	var result VendorOrderConfirmRequest
+	var hasValues bool
+	if cmd.IsSet("input-file") {
+		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+		if err != nil {
+			inputFile = cmd.String("input-file")
+		}
+		b, err := os.ReadFile(inputFile)
+		if err != nil {
+			return nil, fmt.Errorf("error reading input-file: %w", err)
+		}
+		if err := protojson.Unmarshal(b, &result); err != nil {
+			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+		}
+		hasValues = true
+	}
+	if cmd.IsSet("status") {
+		hasValues = true
+		v, ok := VendorOrderStatus_value[cmd.String("status")]
+		if !ok {
+			return nil, fmt.Errorf("unsupported enum value for \"status\" flag: %q", cmd.String("status"))
+		}
+		result.Status = VendorOrderStatus(v)
+	}
+	if !hasValues {
+		return nil, nil
+	}
+	return &result, nil
 }
 
 // UnmarshalCliFlagsToProcessingFlowRequest unmarshals a ProcessingFlowRequest from command line flags

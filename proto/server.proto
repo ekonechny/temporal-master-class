@@ -41,6 +41,9 @@ service Customer {
 
   // Создать заказ
   rpc Checkout(CheckoutRequest) returns (temporal.Order) {}
+
+  // Колбек для подтверждения вендором
+  rpc VendorOrderConfirm(VendorOrderConfirmRequest) returns (google.protobuf.Empty) {}
 }
 
 message NewCustomerRequest {
@@ -96,4 +99,9 @@ message GetOrdersResponse {
 message CheckoutRequest {
   string customerId = 1;
   temporal.PaymentType paymentType = 2;
+}
+
+message VendorOrderConfirmRequest {
+  string id = 1;
+  temporal.VendorOrderStatus status = 2;
 }
