@@ -2,29 +2,31 @@ package main
 
 import (
 	"log"
+	"os"
 
+	"github.com/urfave/cli/v2"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 
 	tmc "temporal-master-class"
+	"temporal-master-class/generated/temporal"
 )
 
 func main() {
-	// The client and worker are heavyweight objects that should be created once per process.
-	c, err := client.Dial(client.Options{})
+	app, err := temporal.NewOrderCli(
+		temporal.NewOrderCliOptions().WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
+			w := worker.New(c, temporal.OrderTaskQueue, worker.Options{})
+			//pb.RegisterOrderActivities(w, &crud.Activity{})
+			temporal.RegisterCreateOrderWorkflow(w, tmc.Register)
+			return w, nil
+		}),
+	)
 	if err != nil {
-		log.Fatalln("Unable to create client", err)
+		log.Fatalf("error initializing example cli: %v", err)
 	}
-	defer c.Close()
 
-	w := worker.New(c, "hello-world", worker.Options{})
-
-	w.RegisterWorkflow(tmc.Workflow)
-	w.RegisterActivity(tmc.HelloActivity)
-	w.RegisterActivity(tmc.ByeActivity)
-
-	err = w.Run(worker.InterruptCh())
-	if err != nil {
-		log.Fatalln("Unable to start worker", err)
+	// run cli
+	if err := app.Run(os.Args); err != nil {
+		log.Fatal(err)
 	}
 }

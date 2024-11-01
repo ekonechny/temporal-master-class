@@ -1,0 +1,28 @@
+syntax="proto3";
+
+package server;
+
+import "google/protobuf/empty.proto";
+import "order.proto";
+
+option go_package = "temporal-master-class/generated/server";
+
+service Order {
+  rpc Create(order.CreateOrderRequest) returns (order.Order) {}
+  rpc Read(ReadOrderRequest) returns (order.Order) {}
+  rpc Update(UpdateOrderRequest) returns (order.Order) {}
+  rpc Delete(DeleteOrderRequest) returns (google.protobuf.Empty) {}
+}
+
+message ReadOrderRequest {
+  string id = 1;
+}
+
+message UpdateOrderRequest {
+  string id = 1;
+  order.UpdateOrderRequest body = 2;
+}
+
+message DeleteOrderRequest {
+  string id = 1;
+}

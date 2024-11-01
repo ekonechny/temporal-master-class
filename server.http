@@ -1,0 +1,32 @@
+### Create order
+GRPC localhost:50051/server.Order/Create
+
+{
+  "id": "da789e50-9be2-424e-b379-cd7aaa12eb75",
+  "address": "Улица Пушкина, дом Колотушкина",
+  "products": [{
+    "id": "111",
+    "name": "Молоко из-под Коровы",
+    "qty": 2,
+    "price": 70
+  }, {
+    "id": "222",
+    "name": "Печеньки, которыми тыкают в молоко",
+    "qty": 7,
+    "price": 90
+  }]
+}
+
+### Get order
+GRPC localhost:50051/server.Order/Read
+
+{
+  "id": "da789e50-9be2-424e-b379-cd7aaa12eb75"
+}
+
+### Delete order
+GRPC localhost:50051/server.Order/Delete
+
+{
+  "id": "orders/da789e50-9be2-424e-b379-cd7aaa12eb75"
+}
