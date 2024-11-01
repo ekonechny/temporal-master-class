@@ -8,6 +8,7 @@ import (
 
 	"temporal-master-class/internal/generated/temporal"
 	"temporal-master-class/internal/utils"
+	"temporal-master-class/internal/workflows/processing/metrics"
 )
 
 func Register(ctx workflow.Context, input *temporal.ProcessingFlowWorkflowInput) (temporal.ProcessingFlowWorkflow, error) {
@@ -21,7 +22,6 @@ func Register(ctx workflow.Context, input *temporal.ProcessingFlowWorkflowInput)
 	if err := workflow.UpsertTypedSearchAttributes(ctx, CustomerAddress.ValueSet(input.Req.Customer.Address.Title)); err != nil {
 		return nil, err
 	}
-
 	return &Workflow{
 		order: &temporal.Order{
 			Id:          input.Req.Id,
@@ -50,6 +50,8 @@ func (w *Workflow) GetOrder() (*temporal.Order, error) {
 }
 
 func (w *Workflow) Execute(ctx workflow.Context) error {
+	// Пишем метрику для нового заказа
+	metrics.RecordOrderStatus(ctx, w.order)
 
 	// Ожидаем подтверждения оплаты для онлайн платежа
 	if w.order.PaymentType == temporal.PaymentType_ONLINE {
@@ -62,6 +64,10 @@ func (w *Workflow) Execute(ctx workflow.Context) error {
 			return workflow.ErrCanceled
 		}
 	}
+
+	// Выставляем статус и пишем метрику
+	w.order.Status = temporal.OrderStatus_OrderStatusConfirmed
+	metrics.RecordOrderStatus(ctx, w.order)
 
 	// Создаем заказ в магазине для сборки
 	vendorOrderResponse, err := temporal.CreateVendorOrder(ctx, &temporal.CreateVendorOrderRequest{})
