@@ -35,6 +35,12 @@ func (c *Client) Reserve(ctx context.Context, products []*temporal.AssortmentRes
 	return nil
 }
 
+func (c *Client) ReserveCancel(ctx context.Context, products []*temporal.AssortmentReserveProductRequest) error {
+	// TODO: на самом деле здесь должен быть сгенеренный http-клиент (или просто http-клиент)
+	// но мне пока его лень писать, поэтому тут будет мок
+	return nil
+}
+
 func New() *Client {
 	return &Client{
 		faker: gofakeit.New(0),

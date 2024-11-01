@@ -13,7 +13,7 @@ type Activities struct {
 	paymentClient    *payment.Client
 }
 
-func (a *Activities) AssortmentCancelReserve(ctx context.Context, req *temporal.AssortmentReserveRequest) error {
+func (a *Activities) PaymentCancel(ctx context.Context, req *temporal.PaymentCancelRequest) error {
 	//TODO implement me
 	panic("implement me")
 }

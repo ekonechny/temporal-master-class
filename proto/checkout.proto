@@ -31,7 +31,25 @@ service Checkout {
     };
   }
 
+  rpc AssortmentReserveCancel(AssortmentReserveRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: { seconds: 4 }
+      retry_policy: {
+        max_attempts: 3
+      }
+    };
+  }
+
   rpc CreatePayment(CreatePaymentRequest) returns (CreatePaymentResponse) {
+    option (temporal.v1.activity) = {
+      start_to_close_timeout: { seconds: 4 }
+      retry_policy: {
+        max_attempts: 3
+      }
+    };
+  };
+
+  rpc PaymentCancel(PaymentCancelRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.activity) = {
       start_to_close_timeout: { seconds: 4 }
       retry_policy: {
@@ -58,3 +76,7 @@ message CreatePaymentResponse {
   PaymentStatus status = 2;
   string url = 3;
 };
+
+message PaymentCancelRequest {
+  string id = 1;
+}

@@ -5,7 +5,6 @@ go 1.23.0
 require (
 	github.com/brianvoe/gofakeit/v7 v7.0.4
 	github.com/cludden/protoc-gen-go-temporal v1.14.3
-	github.com/google/uuid v1.6.0
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/urfave/cli/v2 v2.27.4
 	go.temporal.io/api v1.39.0
@@ -31,6 +30,7 @@ require (
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/mock v1.7.0-rc.1 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/gosimple/slug v1.13.1 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect

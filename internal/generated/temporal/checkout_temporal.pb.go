@@ -48,8 +48,10 @@ var (
 
 // temporal.Checkout activity names
 const (
-	AssortmentReserveActivityName = "temporal.Checkout.AssortmentReserve"
-	CreatePaymentActivityName     = "temporal.Checkout.CreatePayment"
+	AssortmentReserveActivityName       = "temporal.Checkout.AssortmentReserve"
+	AssortmentReserveCancelActivityName = "temporal.Checkout.AssortmentReserveCancel"
+	CreatePaymentActivityName           = "temporal.Checkout.CreatePayment"
+	PaymentCancelActivityName           = "temporal.Checkout.PaymentCancel"
 )
 
 // CheckoutClient describes a client for a(n) temporal.Checkout worker
@@ -657,14 +659,22 @@ type CheckoutActivities interface {
 	// temporal.Checkout.AssortmentReserve implements a(n) temporal.Checkout.AssortmentReserve activity definition
 	AssortmentReserve(ctx context.Context, req *AssortmentReserveRequest) error
 
+	// temporal.Checkout.AssortmentReserveCancel implements a(n) temporal.Checkout.AssortmentReserveCancel activity definition
+	AssortmentReserveCancel(ctx context.Context, req *AssortmentReserveRequest) error
+
 	// temporal.Checkout.CreatePayment implements a(n) temporal.Checkout.CreatePayment activity definition
 	CreatePayment(ctx context.Context, req *CreatePaymentRequest) (*CreatePaymentResponse, error)
+
+	// temporal.Checkout.PaymentCancel implements a(n) temporal.Checkout.PaymentCancel activity definition
+	PaymentCancel(ctx context.Context, req *PaymentCancelRequest) error
 }
 
 // RegisterCheckoutActivities registers activities with a worker
 func RegisterCheckoutActivities(r worker.ActivityRegistry, activities CheckoutActivities) {
 	RegisterAssortmentReserveActivity(r, activities.AssortmentReserve)
+	RegisterAssortmentReserveCancelActivity(r, activities.AssortmentReserveCancel)
 	RegisterCreatePaymentActivity(r, activities.CreatePayment)
+	RegisterPaymentCancelActivity(r, activities.PaymentCancel)
 }
 
 // RegisterAssortmentReserveActivity registers a temporal.Checkout.AssortmentReserve activity
@@ -903,6 +913,246 @@ func (o *AssortmentReserveLocalActivityOptions) WithScheduleToCloseTimeout(d tim
 
 // WithStartToCloseTimeout sets the StartToCloseTimeout value
 func (o *AssortmentReserveLocalActivityOptions) WithStartToCloseTimeout(d time.Duration) *AssortmentReserveLocalActivityOptions {
+	o.startToCloseTimeout = &d
+	return o
+}
+
+// RegisterAssortmentReserveCancelActivity registers a temporal.Checkout.AssortmentReserveCancel activity
+func RegisterAssortmentReserveCancelActivity(r worker.ActivityRegistry, fn func(context.Context, *AssortmentReserveRequest) error) {
+	r.RegisterActivityWithOptions(fn, activity.RegisterOptions{
+		Name: AssortmentReserveCancelActivityName,
+	})
+}
+
+// AssortmentReserveCancelFuture describes a(n) temporal.Checkout.AssortmentReserveCancel activity execution
+type AssortmentReserveCancelFuture struct {
+	Future workflow.Future
+}
+
+// Get blocks on the activity's completion, returning the response
+func (f *AssortmentReserveCancelFuture) Get(ctx workflow.Context) error {
+	return f.Future.Get(ctx, nil)
+}
+
+// Select adds the activity's completion to the selector, callback can be nil
+func (f *AssortmentReserveCancelFuture) Select(sel workflow.Selector, fn func(*AssortmentReserveCancelFuture)) workflow.Selector {
+	return sel.AddFuture(f.Future, func(workflow.Future) {
+		if fn != nil {
+			fn(f)
+		}
+	})
+}
+
+// AssortmentReserveCancel executes a(n) temporal.Checkout.AssortmentReserveCancel activity
+func AssortmentReserveCancel(ctx workflow.Context, req *AssortmentReserveRequest, options ...*AssortmentReserveCancelActivityOptions) error {
+	return AssortmentReserveCancelAsync(ctx, req, options...).Get(ctx)
+}
+
+// AssortmentReserveCancelAsync executes a(n) temporal.Checkout.AssortmentReserveCancel activity (asynchronously)
+func AssortmentReserveCancelAsync(ctx workflow.Context, req *AssortmentReserveRequest, options ...*AssortmentReserveCancelActivityOptions) *AssortmentReserveCancelFuture {
+	var o *AssortmentReserveCancelActivityOptions
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewAssortmentReserveCancelActivityOptions()
+	}
+	var err error
+	if ctx, err = o.Build(ctx); err != nil {
+		errF, errS := workflow.NewFuture(ctx)
+		errS.SetError(err)
+		return &AssortmentReserveCancelFuture{Future: errF}
+	}
+	activity := AssortmentReserveCancelActivityName
+	future := &AssortmentReserveCancelFuture{Future: workflow.ExecuteActivity(ctx, activity, req)}
+	return future
+}
+
+// AssortmentReserveCancelLocal executes a(n) temporal.Checkout.AssortmentReserveCancel activity (locally)
+func AssortmentReserveCancelLocal(ctx workflow.Context, req *AssortmentReserveRequest, options ...*AssortmentReserveCancelLocalActivityOptions) error {
+	return AssortmentReserveCancelLocalAsync(ctx, req, options...).Get(ctx)
+}
+
+// AssortmentReserveCancelLocalAsync executes a(n) temporal.Checkout.AssortmentReserveCancel activity (asynchronously, locally)
+func AssortmentReserveCancelLocalAsync(ctx workflow.Context, req *AssortmentReserveRequest, options ...*AssortmentReserveCancelLocalActivityOptions) *AssortmentReserveCancelFuture {
+	var o *AssortmentReserveCancelLocalActivityOptions
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewAssortmentReserveCancelLocalActivityOptions()
+	}
+	var err error
+	if ctx, err = o.Build(ctx); err != nil {
+		errF, errS := workflow.NewFuture(ctx)
+		errS.SetError(err)
+		return &AssortmentReserveCancelFuture{Future: errF}
+	}
+	var activity any
+	if o.fn != nil {
+		activity = o.fn
+	} else {
+		activity = AssortmentReserveCancelActivityName
+	}
+	future := &AssortmentReserveCancelFuture{Future: workflow.ExecuteLocalActivity(ctx, activity, req)}
+	return future
+}
+
+// AssortmentReserveCancelActivityOptions provides configuration for a(n) temporal.Checkout.AssortmentReserveCancel activity
+type AssortmentReserveCancelActivityOptions struct {
+	options                workflow.ActivityOptions
+	retryPolicy            *temporal.RetryPolicy
+	scheduleToCloseTimeout *time.Duration
+	startToCloseTimeout    *time.Duration
+	heartbeatTimeout       *time.Duration
+	scheduleToStartTimeout *time.Duration
+	taskQueue              *string
+	waitForCancellation    *bool
+}
+
+// NewAssortmentReserveCancelActivityOptions initializes a new AssortmentReserveCancelActivityOptions value
+func NewAssortmentReserveCancelActivityOptions() *AssortmentReserveCancelActivityOptions {
+	return &AssortmentReserveCancelActivityOptions{}
+}
+
+// Build initializes a workflow.Context with appropriate ActivityOptions values derived from schema defaults and any user-defined overrides
+func (o *AssortmentReserveCancelActivityOptions) Build(ctx workflow.Context) (workflow.Context, error) {
+	opts := o.options
+	if v := o.heartbeatTimeout; v != nil {
+		opts.HeartbeatTimeout = *v
+	}
+	if v := o.retryPolicy; v != nil {
+		opts.RetryPolicy = v
+	} else if opts.RetryPolicy == nil {
+		opts.RetryPolicy = &temporal.RetryPolicy{MaximumAttempts: int32(3)}
+	}
+	if v := o.scheduleToCloseTimeout; v != nil {
+		opts.ScheduleToCloseTimeout = *v
+	}
+	if v := o.scheduleToStartTimeout; v != nil {
+		opts.ScheduleToStartTimeout = *v
+	}
+	if v := o.startToCloseTimeout; v != nil {
+		opts.StartToCloseTimeout = *v
+	} else if opts.StartToCloseTimeout == 0 {
+		opts.StartToCloseTimeout = 4000000000 // 4 seconds
+	}
+	if v := o.taskQueue; v != nil {
+		opts.TaskQueue = *v
+	} else if opts.TaskQueue == "" {
+		opts.TaskQueue = CheckoutTaskQueue
+	}
+	if v := o.waitForCancellation; v != nil {
+		opts.WaitForCancellation = *v
+	}
+	return workflow.WithActivityOptions(ctx, opts), nil
+}
+
+// WithActivityOptions specifies an initial ActivityOptions value to which defaults will be applied
+func (o *AssortmentReserveCancelActivityOptions) WithActivityOptions(options workflow.ActivityOptions) *AssortmentReserveCancelActivityOptions {
+	o.options = options
+	return o
+}
+
+// WithHeartbeatTimeout sets the HeartbeatTimeout value
+func (o *AssortmentReserveCancelActivityOptions) WithHeartbeatTimeout(d time.Duration) *AssortmentReserveCancelActivityOptions {
+	o.heartbeatTimeout = &d
+	return o
+}
+
+// WithRetryPolicy sets the RetryPolicy value
+func (o *AssortmentReserveCancelActivityOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *AssortmentReserveCancelActivityOptions {
+	o.retryPolicy = policy
+	return o
+}
+
+// WithScheduleToCloseTimeout sets the ScheduleToCloseTimeout value
+func (o *AssortmentReserveCancelActivityOptions) WithScheduleToCloseTimeout(d time.Duration) *AssortmentReserveCancelActivityOptions {
+	o.scheduleToCloseTimeout = &d
+	return o
+}
+
+// WithScheduleToStartTimeout sets the ScheduleToStartTimeout value
+func (o *AssortmentReserveCancelActivityOptions) WithScheduleToStartTimeout(d time.Duration) *AssortmentReserveCancelActivityOptions {
+	o.scheduleToStartTimeout = &d
+	return o
+}
+
+// WithStartToCloseTimeout sets the StartToCloseTimeout value
+func (o *AssortmentReserveCancelActivityOptions) WithStartToCloseTimeout(d time.Duration) *AssortmentReserveCancelActivityOptions {
+	o.startToCloseTimeout = &d
+	return o
+}
+
+// WithTaskQueue sets the TaskQueue value
+func (o *AssortmentReserveCancelActivityOptions) WithTaskQueue(tq string) *AssortmentReserveCancelActivityOptions {
+	o.taskQueue = &tq
+	return o
+}
+
+// WithWaitForCancellation sets the WaitForCancellation value
+func (o *AssortmentReserveCancelActivityOptions) WithWaitForCancellation(wait bool) *AssortmentReserveCancelActivityOptions {
+	o.waitForCancellation = &wait
+	return o
+}
+
+// AssortmentReserveCancelLocalActivityOptions provides configuration for a(n) temporal.Checkout.AssortmentReserveCancel activity
+type AssortmentReserveCancelLocalActivityOptions struct {
+	options                workflow.LocalActivityOptions
+	retryPolicy            *temporal.RetryPolicy
+	scheduleToCloseTimeout *time.Duration
+	startToCloseTimeout    *time.Duration
+	fn                     func(context.Context, *AssortmentReserveRequest) error
+}
+
+// NewAssortmentReserveCancelLocalActivityOptions initializes a new AssortmentReserveCancelLocalActivityOptions value
+func NewAssortmentReserveCancelLocalActivityOptions() *AssortmentReserveCancelLocalActivityOptions {
+	return &AssortmentReserveCancelLocalActivityOptions{}
+}
+
+// Build initializes a workflow.Context with appropriate LocalActivityOptions values derived from schema defaults and any user-defined overrides
+func (o *AssortmentReserveCancelLocalActivityOptions) Build(ctx workflow.Context) (workflow.Context, error) {
+	opts := o.options
+	if v := o.retryPolicy; v != nil {
+		opts.RetryPolicy = v
+	} else if opts.RetryPolicy == nil {
+		opts.RetryPolicy = &temporal.RetryPolicy{MaximumAttempts: int32(3)}
+	}
+	if v := o.scheduleToCloseTimeout; v != nil {
+		opts.ScheduleToCloseTimeout = *v
+	}
+	if v := o.startToCloseTimeout; v != nil {
+		opts.StartToCloseTimeout = *v
+	} else if opts.StartToCloseTimeout == 0 {
+		opts.StartToCloseTimeout = 4000000000 // 4 seconds
+	}
+	return workflow.WithLocalActivityOptions(ctx, opts), nil
+}
+
+// Local specifies a custom temporal.Checkout.AssortmentReserveCancel implementation
+func (o *AssortmentReserveCancelLocalActivityOptions) Local(fn func(context.Context, *AssortmentReserveRequest) error) *AssortmentReserveCancelLocalActivityOptions {
+	o.fn = fn
+	return o
+}
+
+// WithLocalActivityOptions specifies an initial LocalActivityOptions value to which defaults will be applied
+func (o *AssortmentReserveCancelLocalActivityOptions) WithLocalActivityOptions(options workflow.LocalActivityOptions) *AssortmentReserveCancelLocalActivityOptions {
+	o.options = options
+	return o
+}
+
+// WithRetryPolicy sets the RetryPolicy value
+func (o *AssortmentReserveCancelLocalActivityOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *AssortmentReserveCancelLocalActivityOptions {
+	o.retryPolicy = policy
+	return o
+}
+
+// WithScheduleToCloseTimeout sets the ScheduleToCloseTimeout value
+func (o *AssortmentReserveCancelLocalActivityOptions) WithScheduleToCloseTimeout(d time.Duration) *AssortmentReserveCancelLocalActivityOptions {
+	o.scheduleToCloseTimeout = &d
+	return o
+}
+
+// WithStartToCloseTimeout sets the StartToCloseTimeout value
+func (o *AssortmentReserveCancelLocalActivityOptions) WithStartToCloseTimeout(d time.Duration) *AssortmentReserveCancelLocalActivityOptions {
 	o.startToCloseTimeout = &d
 	return o
 }
@@ -1147,6 +1397,246 @@ func (o *CreatePaymentLocalActivityOptions) WithScheduleToCloseTimeout(d time.Du
 
 // WithStartToCloseTimeout sets the StartToCloseTimeout value
 func (o *CreatePaymentLocalActivityOptions) WithStartToCloseTimeout(d time.Duration) *CreatePaymentLocalActivityOptions {
+	o.startToCloseTimeout = &d
+	return o
+}
+
+// RegisterPaymentCancelActivity registers a temporal.Checkout.PaymentCancel activity
+func RegisterPaymentCancelActivity(r worker.ActivityRegistry, fn func(context.Context, *PaymentCancelRequest) error) {
+	r.RegisterActivityWithOptions(fn, activity.RegisterOptions{
+		Name: PaymentCancelActivityName,
+	})
+}
+
+// PaymentCancelFuture describes a(n) temporal.Checkout.PaymentCancel activity execution
+type PaymentCancelFuture struct {
+	Future workflow.Future
+}
+
+// Get blocks on the activity's completion, returning the response
+func (f *PaymentCancelFuture) Get(ctx workflow.Context) error {
+	return f.Future.Get(ctx, nil)
+}
+
+// Select adds the activity's completion to the selector, callback can be nil
+func (f *PaymentCancelFuture) Select(sel workflow.Selector, fn func(*PaymentCancelFuture)) workflow.Selector {
+	return sel.AddFuture(f.Future, func(workflow.Future) {
+		if fn != nil {
+			fn(f)
+		}
+	})
+}
+
+// PaymentCancel executes a(n) temporal.Checkout.PaymentCancel activity
+func PaymentCancel(ctx workflow.Context, req *PaymentCancelRequest, options ...*PaymentCancelActivityOptions) error {
+	return PaymentCancelAsync(ctx, req, options...).Get(ctx)
+}
+
+// PaymentCancelAsync executes a(n) temporal.Checkout.PaymentCancel activity (asynchronously)
+func PaymentCancelAsync(ctx workflow.Context, req *PaymentCancelRequest, options ...*PaymentCancelActivityOptions) *PaymentCancelFuture {
+	var o *PaymentCancelActivityOptions
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewPaymentCancelActivityOptions()
+	}
+	var err error
+	if ctx, err = o.Build(ctx); err != nil {
+		errF, errS := workflow.NewFuture(ctx)
+		errS.SetError(err)
+		return &PaymentCancelFuture{Future: errF}
+	}
+	activity := PaymentCancelActivityName
+	future := &PaymentCancelFuture{Future: workflow.ExecuteActivity(ctx, activity, req)}
+	return future
+}
+
+// PaymentCancelLocal executes a(n) temporal.Checkout.PaymentCancel activity (locally)
+func PaymentCancelLocal(ctx workflow.Context, req *PaymentCancelRequest, options ...*PaymentCancelLocalActivityOptions) error {
+	return PaymentCancelLocalAsync(ctx, req, options...).Get(ctx)
+}
+
+// PaymentCancelLocalAsync executes a(n) temporal.Checkout.PaymentCancel activity (asynchronously, locally)
+func PaymentCancelLocalAsync(ctx workflow.Context, req *PaymentCancelRequest, options ...*PaymentCancelLocalActivityOptions) *PaymentCancelFuture {
+	var o *PaymentCancelLocalActivityOptions
+	if len(options) > 0 && options[0] != nil {
+		o = options[0]
+	} else {
+		o = NewPaymentCancelLocalActivityOptions()
+	}
+	var err error
+	if ctx, err = o.Build(ctx); err != nil {
+		errF, errS := workflow.NewFuture(ctx)
+		errS.SetError(err)
+		return &PaymentCancelFuture{Future: errF}
+	}
+	var activity any
+	if o.fn != nil {
+		activity = o.fn
+	} else {
+		activity = PaymentCancelActivityName
+	}
+	future := &PaymentCancelFuture{Future: workflow.ExecuteLocalActivity(ctx, activity, req)}
+	return future
+}
+
+// PaymentCancelActivityOptions provides configuration for a(n) temporal.Checkout.PaymentCancel activity
+type PaymentCancelActivityOptions struct {
+	options                workflow.ActivityOptions
+	retryPolicy            *temporal.RetryPolicy
+	scheduleToCloseTimeout *time.Duration
+	startToCloseTimeout    *time.Duration
+	heartbeatTimeout       *time.Duration
+	scheduleToStartTimeout *time.Duration
+	taskQueue              *string
+	waitForCancellation    *bool
+}
+
+// NewPaymentCancelActivityOptions initializes a new PaymentCancelActivityOptions value
+func NewPaymentCancelActivityOptions() *PaymentCancelActivityOptions {
+	return &PaymentCancelActivityOptions{}
+}
+
+// Build initializes a workflow.Context with appropriate ActivityOptions values derived from schema defaults and any user-defined overrides
+func (o *PaymentCancelActivityOptions) Build(ctx workflow.Context) (workflow.Context, error) {
+	opts := o.options
+	if v := o.heartbeatTimeout; v != nil {
+		opts.HeartbeatTimeout = *v
+	}
+	if v := o.retryPolicy; v != nil {
+		opts.RetryPolicy = v
+	} else if opts.RetryPolicy == nil {
+		opts.RetryPolicy = &temporal.RetryPolicy{MaximumAttempts: int32(3)}
+	}
+	if v := o.scheduleToCloseTimeout; v != nil {
+		opts.ScheduleToCloseTimeout = *v
+	}
+	if v := o.scheduleToStartTimeout; v != nil {
+		opts.ScheduleToStartTimeout = *v
+	}
+	if v := o.startToCloseTimeout; v != nil {
+		opts.StartToCloseTimeout = *v
+	} else if opts.StartToCloseTimeout == 0 {
+		opts.StartToCloseTimeout = 4000000000 // 4 seconds
+	}
+	if v := o.taskQueue; v != nil {
+		opts.TaskQueue = *v
+	} else if opts.TaskQueue == "" {
+		opts.TaskQueue = CheckoutTaskQueue
+	}
+	if v := o.waitForCancellation; v != nil {
+		opts.WaitForCancellation = *v
+	}
+	return workflow.WithActivityOptions(ctx, opts), nil
+}
+
+// WithActivityOptions specifies an initial ActivityOptions value to which defaults will be applied
+func (o *PaymentCancelActivityOptions) WithActivityOptions(options workflow.ActivityOptions) *PaymentCancelActivityOptions {
+	o.options = options
+	return o
+}
+
+// WithHeartbeatTimeout sets the HeartbeatTimeout value
+func (o *PaymentCancelActivityOptions) WithHeartbeatTimeout(d time.Duration) *PaymentCancelActivityOptions {
+	o.heartbeatTimeout = &d
+	return o
+}
+
+// WithRetryPolicy sets the RetryPolicy value
+func (o *PaymentCancelActivityOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *PaymentCancelActivityOptions {
+	o.retryPolicy = policy
+	return o
+}
+
+// WithScheduleToCloseTimeout sets the ScheduleToCloseTimeout value
+func (o *PaymentCancelActivityOptions) WithScheduleToCloseTimeout(d time.Duration) *PaymentCancelActivityOptions {
+	o.scheduleToCloseTimeout = &d
+	return o
+}
+
+// WithScheduleToStartTimeout sets the ScheduleToStartTimeout value
+func (o *PaymentCancelActivityOptions) WithScheduleToStartTimeout(d time.Duration) *PaymentCancelActivityOptions {
+	o.scheduleToStartTimeout = &d
+	return o
+}
+
+// WithStartToCloseTimeout sets the StartToCloseTimeout value
+func (o *PaymentCancelActivityOptions) WithStartToCloseTimeout(d time.Duration) *PaymentCancelActivityOptions {
+	o.startToCloseTimeout = &d
+	return o
+}
+
+// WithTaskQueue sets the TaskQueue value
+func (o *PaymentCancelActivityOptions) WithTaskQueue(tq string) *PaymentCancelActivityOptions {
+	o.taskQueue = &tq
+	return o
+}
+
+// WithWaitForCancellation sets the WaitForCancellation value
+func (o *PaymentCancelActivityOptions) WithWaitForCancellation(wait bool) *PaymentCancelActivityOptions {
+	o.waitForCancellation = &wait
+	return o
+}
+
+// PaymentCancelLocalActivityOptions provides configuration for a(n) temporal.Checkout.PaymentCancel activity
+type PaymentCancelLocalActivityOptions struct {
+	options                workflow.LocalActivityOptions
+	retryPolicy            *temporal.RetryPolicy
+	scheduleToCloseTimeout *time.Duration
+	startToCloseTimeout    *time.Duration
+	fn                     func(context.Context, *PaymentCancelRequest) error
+}
+
+// NewPaymentCancelLocalActivityOptions initializes a new PaymentCancelLocalActivityOptions value
+func NewPaymentCancelLocalActivityOptions() *PaymentCancelLocalActivityOptions {
+	return &PaymentCancelLocalActivityOptions{}
+}
+
+// Build initializes a workflow.Context with appropriate LocalActivityOptions values derived from schema defaults and any user-defined overrides
+func (o *PaymentCancelLocalActivityOptions) Build(ctx workflow.Context) (workflow.Context, error) {
+	opts := o.options
+	if v := o.retryPolicy; v != nil {
+		opts.RetryPolicy = v
+	} else if opts.RetryPolicy == nil {
+		opts.RetryPolicy = &temporal.RetryPolicy{MaximumAttempts: int32(3)}
+	}
+	if v := o.scheduleToCloseTimeout; v != nil {
+		opts.ScheduleToCloseTimeout = *v
+	}
+	if v := o.startToCloseTimeout; v != nil {
+		opts.StartToCloseTimeout = *v
+	} else if opts.StartToCloseTimeout == 0 {
+		opts.StartToCloseTimeout = 4000000000 // 4 seconds
+	}
+	return workflow.WithLocalActivityOptions(ctx, opts), nil
+}
+
+// Local specifies a custom temporal.Checkout.PaymentCancel implementation
+func (o *PaymentCancelLocalActivityOptions) Local(fn func(context.Context, *PaymentCancelRequest) error) *PaymentCancelLocalActivityOptions {
+	o.fn = fn
+	return o
+}
+
+// WithLocalActivityOptions specifies an initial LocalActivityOptions value to which defaults will be applied
+func (o *PaymentCancelLocalActivityOptions) WithLocalActivityOptions(options workflow.LocalActivityOptions) *PaymentCancelLocalActivityOptions {
+	o.options = options
+	return o
+}
+
+// WithRetryPolicy sets the RetryPolicy value
+func (o *PaymentCancelLocalActivityOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *PaymentCancelLocalActivityOptions {
+	o.retryPolicy = policy
+	return o
+}
+
+// WithScheduleToCloseTimeout sets the ScheduleToCloseTimeout value
+func (o *PaymentCancelLocalActivityOptions) WithScheduleToCloseTimeout(d time.Duration) *PaymentCancelLocalActivityOptions {
+	o.scheduleToCloseTimeout = &d
+	return o
+}
+
+// WithStartToCloseTimeout sets the StartToCloseTimeout value
+func (o *PaymentCancelLocalActivityOptions) WithStartToCloseTimeout(d time.Duration) *PaymentCancelLocalActivityOptions {
 	o.startToCloseTimeout = &d
 	return o
 }

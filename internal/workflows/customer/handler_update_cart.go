@@ -44,7 +44,6 @@ func (w *Workflow) UpdateCart(ctx workflow.Context, request *temporal.UpdateCart
 			Qty:   p.Qty,
 		})
 	}
-
 	//w.cart = &temporal.Cart{
 	//	Products: products,
 	//	Total:    calculateTotal(products),
@@ -63,7 +62,6 @@ func (w *Workflow) UpdateCart(ctx workflow.Context, request *temporal.UpdateCart
 	//encodedValue := workflow.SideEffect(ctx, func(ctx workflow.Context) interface{} {
 	//	return uuid.NewString()
 	//})
-
 	//w.cart = &temporal.Cart{
 	//	Products: products,
 	//	Total:    calculateTotal(products),

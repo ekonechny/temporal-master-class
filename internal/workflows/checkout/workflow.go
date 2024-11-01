@@ -30,11 +30,29 @@ func (w *Workflow) Execute(ctx workflow.Context) (*temporal.Order, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	defer func() {
+		// Отменяем резерв
+		if err != nil {
+			// Если не получится отменить резерв, то лучше куда-то эскалировать
+			_ = temporal.AssortmentReserveCancel(ctx, &temporal.AssortmentReserveRequest{Products: reserveProducts})
+		}
+	}()
+
 	if w.req.PaymentType == temporal.PaymentType_ONLINE {
-		_, err = temporal.CreatePayment(ctx, &temporal.CreatePaymentRequest{})
+		p, err := temporal.CreatePayment(ctx, &temporal.CreatePaymentRequest{})
 		if err != nil {
 			return nil, err
 		}
+		defer func() {
+			// Отменяем платеж
+			if err != nil {
+				// Если не получится отменить, то необходимо эскалировать
+				_ = temporal.PaymentCancel(ctx, &temporal.PaymentCancelRequest{
+					Id: p.Id,
+				})
+			}
+		}()
 	}
 	order := &temporal.Order{
 		Id:          utils.WorkflowID(ctx),
