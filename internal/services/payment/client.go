@@ -28,6 +28,12 @@ func (c *Client) GetPayment(ctx context.Context, paymentId string) (*temporal.Pa
 	}, nil
 }
 
+func (c *Client) PaymentCancel(ctx context.Context, paymentId string) error {
+	// TODO: на самом деле здесь должен быть сгенеренный http-клиент (или просто http-клиент)
+	// но мне пока его лень писать, поэтому тут будет мок
+	return nil
+}
+
 func New() *Client {
 	return &Client{}
 }
