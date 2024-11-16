@@ -66,8 +66,10 @@ make deps
 │       ├── checkout
 │       │   ├── activities
 │       │   │   ├── activities.go --> Основная структура активити и все зависимости
-│       │   │   ├── activity_assortment_reserve.go
-│       │   │   └── activity_create_payment.go
+│       │   │   ├── activity_assortment_reserve.go --> Резерв ассортимента
+│       │   │   ├── activity_assortment_reserve_cancel.go --> Компенсация: Отмена резерва
+│       │   │   ├── activity_create_payment.go --> Создание платежа
+│       │   │   └── activity_payment_cancel.go --> Компенсация: Отмена платежа
 │       │   └── workflow.go --> Workflow, создающий заказ
 │       ├── customer
 │       │   ├── activities
