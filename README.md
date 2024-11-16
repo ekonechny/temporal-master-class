@@ -125,8 +125,8 @@ make server
 
 Дальше можно отправлять GRPC-запросы из `server.http`
 
-## Перейти на следующий шаг
+## Посмотреть на весь проект целиком
 
 ```shell
-git switch 10-observability
+git switch main
 ```
