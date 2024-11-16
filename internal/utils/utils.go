@@ -9,6 +9,9 @@ import (
 )
 
 func WorkflowID(ctx workflow.Context) string {
+	if len(strings.Split(workflow.GetInfo(ctx).WorkflowExecution.ID, "/")) < 2 {
+		return workflow.GetInfo(ctx).WorkflowExecution.ID
+	}
 	return strings.Split(workflow.GetInfo(ctx).WorkflowExecution.ID, "/")[1]
 }
 

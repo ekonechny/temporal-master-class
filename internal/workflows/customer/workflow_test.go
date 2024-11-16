@@ -33,27 +33,41 @@ func (s *UnitTestSuite) AfterTest(_, _ string) {
 }
 
 func (s *UnitTestSuite) Test_HappyPath() {
+	// Регистрируем отложенные события
+	{
+		s.env.RegisterDelayedCallback(func() {
+			s.env.SignalWorkflow(temporal.SetAddressSignalName,
+				&temporal.SetAddressRequest{
+					Address: &temporal.Address{
+						Title: "Санкт-Петербург, Невский проспект, 75",
+						Lat:   "59.9342802",
+						Long:  "30.3350986",
+					}})
+		}, time.Second)
+		s.env.RegisterDelayedCallback(func() {
+			s.env.SignalWorkflow(temporal.DeleteProfileSignalName, nil)
+		}, time.Minute)
+	}
+
+	// Запускаем workflow
+	{
+		s.env.ExecuteWorkflow(temporal.CustomerFlowWorkflowName, &temporal.CustomerFlowRequest{
+			Name:  "Джон Персиков",
+			Phone: "79650843621",
+		}, workflow.RegisterOptions{})
+	}
+
+	// Проверяем флоу выполнения
 	s.env.RegisterDelayedCallback(func() {
-		s.env.SignalWorkflow(temporal.SetAddressSignalName, &temporal.SetAddressRequest{Address: &temporal.Address{
-			Title: "Санкт-Петербург, Невский проспект, 75",
-			Lat:   "59.9342802",
-			Long:  "30.3350986",
-		}})
-	}, time.Second)
-	s.env.RegisterDelayedCallback(func() {
-		s.env.SignalWorkflow(temporal.DeleteProfileSignalName, nil)
+		s.True(s.env.IsWorkflowCompleted())
+		res, err := s.env.QueryWorkflow(temporal.GetProfileQueryName)
+		s.NoError(err)
+		var profile temporal.Profile
+		err = res.Get(&profile)
+		s.NoError(err)
+		s.EqualValues("Джон Персиков", profile.Name)
+		s.NotNil(profile.Address)
+		s.EqualValues("Санкт-Петербург, Невский проспект, 75", profile.Address.Title)
+		s.NoError(s.env.GetWorkflowError())
 	}, time.Minute)
-	s.env.ExecuteWorkflow(temporal.CustomerFlowWorkflowName, &temporal.CustomerFlowRequest{
-		Name:  "Джон Персиков",
-		Phone: "79650843621",
-	}, workflow.RegisterOptions{})
-	res, err := s.env.QueryWorkflow(temporal.GetProfileQueryName)
-	s.NoError(err)
-	var profile temporal.Profile
-	err = res.Get(&profile)
-	s.NoError(err)
-	s.EqualValues("Джон Персиков", profile.Name)
-	s.EqualValues("Санкт-Петербург, Невский проспект, 75", profile.Address.Title)
-	s.True(s.env.IsWorkflowCompleted())
-	s.NoError(s.env.GetWorkflowError())
 }

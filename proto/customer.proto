@@ -103,7 +103,7 @@ message UpdateCartRequest {
 }
 
 message CheckoutRequest {
-    PaymentType paymentType = 1;
+  PaymentType paymentType = 1;
 }
 
 message AssortmentGetProductsRequest {
