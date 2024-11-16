@@ -53,3 +53,6 @@ worker:
 
 server:
 	go run cmd/server/main.go
+
+test:
+	@go test ./internal/... -cover -short -count=1

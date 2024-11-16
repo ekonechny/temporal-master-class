@@ -6,7 +6,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"temporal-master-class/internal/generated/temporal"
-	"temporal-master-class/internal/utils"
 )
 
 func Register(ctx workflow.Context, input *temporal.CustomerFlowWorkflowInput) (temporal.CustomerFlowWorkflow, error) {
@@ -15,6 +14,11 @@ func Register(ctx workflow.Context, input *temporal.CustomerFlowWorkflowInput) (
 		deleteProfileSignal: input.DeleteProfile,
 		deleteCartSignal:    input.DeleteCart,
 		setAddressSignal:    input.SetAddress,
+		profile: &temporal.Profile{
+			//Id:    utils.WorkflowID(ctx),
+			Name:  input.Req.GetName(),
+			Phone: input.Req.GetPhone(),
+		},
 	}, nil
 }
 
@@ -28,12 +32,6 @@ type Workflow struct {
 }
 
 func (w *Workflow) Execute(ctx workflow.Context) error {
-	// Создаем профиль
-	w.profile = &temporal.Profile{
-		Id:    utils.WorkflowID(ctx),
-		Name:  w.req.GetName(),
-		Phone: w.req.GetPhone(),
-	}
 	workflow.GetLogger(ctx).Info("new profile", "profile", w.profile)
 	// Ожидаем 1 минуту пока пользователь введет адрес или отменяем его "жизненный цикл"
 	var isCancelled bool
