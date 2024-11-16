@@ -1,4 +1,4 @@
-### Run workflow
+### Запустить жизненный цикл пользователя
 GRPC localhost:50051/server.Customer/NewCustomer
 
 {
@@ -15,7 +15,7 @@ GRPC localhost:50051/server.Customer/NewCustomer
     });
 %}
 
-### Set address
+### Указать адрес пользователя
 GRPC localhost:50051/server.Customer/SetAddress
 
 {
@@ -25,14 +25,14 @@ GRPC localhost:50051/server.Customer/SetAddress
   "long": "30.31413"
 }
 
-### Get profile
+### Получить профиль
 GRPC localhost:50051/server.Customer/GetProfile
 
 {
   "id": "{{ customerId }}"
 }
 
-### Update cart
+### Обновить корзину
 GRPC localhost:50051/server.Customer/UpdateCart
 
 {
@@ -46,14 +46,14 @@ GRPC localhost:50051/server.Customer/UpdateCart
   }]
 }
 
-### Get cart
+### Получить корзину
 GRPC localhost:50051/server.Customer/GetCart
 
 {
   "customerId": "{{ customerId }}"
 }
 
-### Checkout
+### Создать заказ
 GRPC localhost:50051/server.Customer/Checkout
 
 {

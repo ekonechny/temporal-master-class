@@ -102,7 +102,7 @@ message UpdateCartRequest {
 }
 
 message CheckoutRequest {
-    PaymentType paymentType = 1;
+  PaymentType paymentType = 1;
 }
 
 enum PaymentType {
