@@ -13,6 +13,21 @@ brew install temporal
 brew install protobuf
 ```
 
+Установите [protoc-gen-go](https://grpc.io/docs/languages/go/quickstart/):
+```shell
+go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+```
+
+Установите [protoc-gen-go-temporal](https://github.com/cludden/protoc-gen-go-temporal):
+```shell
+go install github.com/cludden/protoc-gen-go-temporal/cmd/protoc-gen-go_temporal@${PROTOC_GEN_GO_TEMPORAL_VERSION}
+```
+
+Подтяните зависимости
+```shell
+make deps
+```
+
 Подтяните зависимости
 ```shell
 make deps
