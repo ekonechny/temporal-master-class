@@ -126,5 +126,5 @@ make server
 ## Перейти на следующий шаг
 
 ```shell
-git switch 08-search
+git switch 09-testing
 ```
