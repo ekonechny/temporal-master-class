@@ -116,5 +116,5 @@ make server
 ## Перейти на следующий шаг
 
 ```shell
-git switch 07-updates
+git switch 08-search
 ```
