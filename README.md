@@ -77,7 +77,9 @@ make deps
 │       │   │   └── activity_assortment_get_products.go  --> Получение продуктов из сервиса ассортиментов
 │       │   ├── handler_checkout.go --> Handler для создания заказа
 │       │   ├── handler_update_cart.go --> Handler для обновления корзины
-│       │   └── workflow.go --> Workflow, описывающий жизненный цикл пользователя
+│       │   ├── workflow.go --> Workflow, описывающий жизненный цикл пользователя
+│       │   ├── workflow_replay_test.go --> Replay-тесты для регресса
+│       │   └── workflow_test.go --> Юнит-тесты
 │       └── processing
 │           ├── activities
 │           │   ├── activities.go --> Основная структура активити и все зависимости
@@ -126,5 +128,5 @@ make server
 ## Перейти на следующий шаг
 
 ```shell
-git switch 09-testing
+git switch 10-observability
 ```
