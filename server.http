@@ -1,4 +1,4 @@
-### Create order
+### Создать заказ
 GRPC localhost:50051/server.Order/Create
 
 {
@@ -17,14 +17,14 @@ GRPC localhost:50051/server.Order/Create
   }]
 }
 
-### Get order
+### Получить заказ
 GRPC localhost:50051/server.Order/Read
 
 {
   "id": "da789e50-9be2-424e-b379-cd7aaa12eb75"
 }
 
-### Delete order
+### Удалить заказ
 GRPC localhost:50051/server.Order/Delete
 
 {
