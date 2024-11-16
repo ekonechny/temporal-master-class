@@ -85,6 +85,11 @@ make deps
 │           │   ├── activity_get_payment.go --> Получение статуса платежа
 │           │   └── activity_get_vendor_order.go --> Получение статуса заказа у вендора
 │           └── workflow.go  --> Workflow для процессинга заказов
+├── pkg
+│   └── tcl-query-builder  --> Утилита для сборки запросов в Temporal
+│       ├── builder.go
+│       └── builder_test.go
+
 ├── proto
 │   ├── checkout.proto
 │   ├── common.proto
@@ -99,6 +104,11 @@ make deps
 Запустить Temporal Dev Server
 ```shell
 make temporal-dev-server
+```
+
+Создать нужные индексы
+```shell
+make create-search-attributes
 ```
 
 Запуск воркера
