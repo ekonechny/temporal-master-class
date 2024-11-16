@@ -114,5 +114,5 @@ make server
 ## Перейти на следующий шаг
 
 ```shell
-git switch 05-versioning
+git switch 06-saga
 ```
