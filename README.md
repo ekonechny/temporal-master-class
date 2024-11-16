@@ -33,24 +33,63 @@ make deps
 ```
 ├── Makefile
 ├── README.md
-├── generated --> Результаты кодгена
+├── cmd
 │   ├── server
-│   │   ├── server.pb.go
-│   │   └── server_grpc.pb.go
-│   └── temporal
-│       ├── temporal.pb.go
-│       └── temporal_temporal.pb.go
+│   │   └── main.go --> Команда, для запуска GRPC-сервера
+│   └── worker
+│       └── main.go  --> Команда, для запуска воркера
 ├── go.mod
 ├── go.sum
+├── internal
+│   ├── generated --> Результаты кодгена
+│   │   ├── server
+│   │   │   ├── server.pb.go
+│   │   │   └── server_grpc.pb.go
+│   │   └── temporal
+│   │       ├── checkout.pb.go
+│   │       ├── checkout_temporal.pb.go
+│   │       ├── common.pb.go
+│   │       ├── customer.pb.go
+│   │       ├── customer_temporal.pb.go
+│   │       ├── processing.pb.go
+│   │       └── processing_temporal.pb.go
+│   ├── services --> Моки вызовов в сервисы
+│   │   ├── assortment
+│   │   │   └── client.go
+│   │   ├── payment
+│   │   │   └── client.go
+│   │   └── vendors
+│   │       └── client.go
+│   ├── utils
+│   │   └── utils.go --> Полезные общие команды
+│   └── workflows
+│       ├── checkout
+│       │   ├── activities
+│       │   │   ├── activities.go --> Основная структура активити и все зависимости
+│       │   │   ├── activity_assortment_reserve.go
+│       │   │   └── activity_create_payment.go
+│       │   └── workflow.go --> Workflow, создающий заказ
+│       ├── customer
+│       │   ├── activities
+│       │   │   ├── activities.go --> Основная структура активити и все зависимости
+│       │   │   └── activity_assortment_get_products.go  --> Получение продуктов из сервиса ассортиментов
+│       │   ├── handler_checkout.go --> Handler для создания заказа
+│       │   ├── handler_update_cart.go --> Handler для обновления корзины
+│       │   └── workflow.go --> Workflow, описывающий жизненный цикл пользователя
+│       └── processing
+│           ├── activities
+│           │   ├── activities.go --> Основная структура активити и все зависимости
+│           │   ├── activity_create_vendor_order.go --> Создание заказа у вендора
+│           │   ├── activity_get_payment.go --> Получение статуса платежа
+│           │   └── activity_get_vendor_order.go --> Получение статуса заказа у вендора
+│           └── workflow.go  --> Workflow для процессинга заказов
 ├── proto
-│   ├── server.proto -->  Простейший GRPC-сервер
-│   └── temporal.proto --> Protofile для Temporal, описывающий жизненный цикл пользователя
-├── server
-│   └── main.go --> Команда, для запуска GRPC-сервера
-├── server.http --> Примеры запросов к GRPC-серверу
-├── worker
-│   └── main.go --> Команда, для запуска воркера
-└── workflow.go --> Основной workflow
+│   ├── checkout.proto
+│   ├── common.proto
+│   ├── customer.proto
+│   ├── processing.proto
+│   └── server.proto
+└── server.http  --> Примеры запросов к GRPC-серверу
 ```
 
 ## Запуск
@@ -75,5 +114,5 @@ make server
 ## Перейти на следующий шаг
 
 ```shell
-git switch 04-activities
+git switch 05-versioning
 ```
