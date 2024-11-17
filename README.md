@@ -77,6 +77,9 @@ make deps
 │       │   │   └── activity_assortment_get_products.go  --> Получение продуктов из сервиса ассортиментов
 │       │   ├── handler_checkout.go --> Handler для создания заказа
 │       │   ├── handler_update_cart.go --> Handler для обновления корзины
+│       │   ├── replaytests --> фикстуры c event history для replay tests
+│       │   │   ├── happy_path.json
+│       │   │   └── happy_path_with_checkout.json
 │       │   ├── workflow.go --> Workflow, описывающий жизненный цикл пользователя
 │       │   ├── workflow_replay_test.go --> Replay-тесты для регресса
 │       │   └── workflow_test.go --> Юнит-тесты
