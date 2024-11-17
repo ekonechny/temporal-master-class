@@ -81,5 +81,12 @@ GRPC localhost:50051/server.Customer/GetOrders
   "phone": "79650843636"
 }
 
+### Удалить профиль
+GRPC localhost:50051/server.Customer/DeleteProfile
+
+{
+  "id": "{{ customerId }}"
+}
+
 ### Metrics
 GET localhost:8081/metrics
