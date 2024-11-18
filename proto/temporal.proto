@@ -8,10 +8,13 @@ import "temporal/v1/temporal.proto";
 option go_package = "temporal-master-class/generated/temporal";
 
 service order {
+  // Очередь задач
+  // https://docs.temporal.io/workers#task-queue
   option (temporal.v1.service) = {
     task_queue: "order-v1"
   };
 
+  // Это основной workflow
   rpc CreateOrder(CreateOrderRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
       id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
@@ -22,14 +25,20 @@ service order {
     };
   }
 
+  // Получение информации из запущенного workflow
+  // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
   rpc Read(google.protobuf.Empty) returns (Order) {
     option (temporal.v1.query) = {};
   }
 
+  // Обновление инофрмации в запущенном workflow
+  // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
   rpc Update(UpdateOrderRequest) returns (Order) {
     option (temporal.v1.update) = {};
   }
 
+  // Удаление workflow. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+  // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
   rpc Delete(google.protobuf.Empty) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = {};
   }

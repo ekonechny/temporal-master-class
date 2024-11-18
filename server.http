@@ -24,6 +24,25 @@ GRPC localhost:50051/server.Order/Read
   "id": "da789e50-9be2-424e-b379-cd7aaa12eb75"
 }
 
+### Обновить заказ
+GRPC localhost:50051/server.Order/Update
+
+{
+  "id": "da789e50-9be2-424e-b379-cd7aaa12eb75",
+  "address": "Улица Пушкина, дом Колотушкина",
+  "products": [{
+    "id": "333",
+    "name": "Вкусный глазированный сырок из свежего молока",
+    "qty": 2,
+    "price": 85
+  }, {
+    "id": "222",
+    "name": "Печеньки, которыми тыкают в молоко",
+    "qty": 7,
+    "price": 90
+  }]
+}
+
 ### Удалить заказ
 GRPC localhost:50051/server.Order/Delete
 

@@ -54,7 +54,10 @@ func (s *srv) Update(ctx context.Context, in *server.UpdateOrderRequest) (*tempo
 	if err != nil {
 		return nil, err
 	}
-	update, err := s.tcl.Update(ctx, id, "", in.Body)
+	update, err := s.tcl.Update(ctx, id, "", &temporal.UpdateOrderRequest{
+		Address:  in.Address,
+		Products: in.Products,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -70,6 +73,7 @@ func (s *srv) Delete(ctx context.Context, in *server.DeleteOrderRequest) (*empty
 }
 
 func main() {
+	// Запускаем простейший GRPC-сервер
 	flag.Parse()
 	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if err != nil {

@@ -3,7 +3,7 @@ syntax="proto3";
 package server;
 
 import "google/protobuf/empty.proto";
-import "order.proto";
+import "temporal.proto";
 
 option go_package = "temporal-master-class/generated/server";
 
@@ -20,7 +20,8 @@ message ReadOrderRequest {
 
 message UpdateOrderRequest {
   string id = 1;
-  order.UpdateOrderRequest body = 2;
+  string address = 2;
+  repeated order.Product products = 3;
 }
 
 message DeleteOrderRequest {

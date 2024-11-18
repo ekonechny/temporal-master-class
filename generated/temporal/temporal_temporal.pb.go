@@ -5,7 +5,7 @@
 //	go go1.23.0
 //	protoc major:5 minor:28 patch:2 suffix:""
 //
-// source: order.proto
+// source: temporal.proto
 package temporal
 
 import (
@@ -65,7 +65,7 @@ const (
 
 // OrderClient describes a client for a(n) order.order worker
 type OrderClient interface {
-	// CreateOrder executes a(n) order.order.CreateOrder workflow and blocks until error or response received
+	// Это основной workflow
 	CreateOrder(ctx context.Context, req *CreateOrderRequest, opts ...*CreateOrderOptions) error
 
 	// CreateOrderAsync starts a(n) order.order.CreateOrder workflow and returns a handle to the workflow run
@@ -80,13 +80,16 @@ type OrderClient interface {
 	// TerminateWorkflow an existing workflow execution
 	TerminateWorkflow(ctx context.Context, workflowID string, runID string, reason string, details ...interface{}) error
 
-	// order.order.Read executes a(n) order.order.Read query
+	// Получение информации из запущенного workflow
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	Read(ctx context.Context, workflowID string, runID string) (*Order, error)
 
-	// order.order.Delete sends a(n) order.order.Delete signal
+	// Удаление workflow. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 	Delete(ctx context.Context, workflowID string, runID string) error
 
-	// Update executes a(n) order.order.Update update and blocks until update completion
+	// Обновление инофрмации в запущенном workflow
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	Update(ctx context.Context, workflowID string, runID string, req *UpdateOrderRequest, opts ...*UpdateOptions) (*Order, error)
 
 	// UpdateAsync starts a(n) order.order.Update update and returns a handle to the workflow update
@@ -161,7 +164,7 @@ func (opts *orderClientOptions) getLogger() *slog.Logger {
 	return slog.Default()
 }
 
-// order.order.CreateOrder executes a order.order.CreateOrder workflow and blocks until error or response received
+// Это основной workflow
 func (c *orderClient) CreateOrder(ctx context.Context, req *CreateOrderRequest, options ...*CreateOrderOptions) error {
 	run, err := c.CreateOrderAsync(ctx, req, options...)
 	if err != nil {
@@ -170,7 +173,7 @@ func (c *orderClient) CreateOrder(ctx context.Context, req *CreateOrderRequest, 
 	return run.Get(ctx)
 }
 
-// CreateOrderAsync starts a(n) order.order.CreateOrder workflow and returns a handle to the workflow run
+// Это основной workflow
 func (c *orderClient) CreateOrderAsync(ctx context.Context, req *CreateOrderRequest, options ...*CreateOrderOptions) (CreateOrderRun, error) {
 	var o *CreateOrderOptions
 	if len(options) > 0 && options[0] != nil {
@@ -213,7 +216,8 @@ func (c *orderClient) TerminateWorkflow(ctx context.Context, workflowID string, 
 	return c.client.TerminateWorkflow(ctx, workflowID, runID, reason, details...)
 }
 
-// order.order.Read sends a(n) order.order.Read query to an existing workflow
+// Получение информации из запущенного workflow
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (c *orderClient) Read(ctx context.Context, workflowID string, runID string) (*Order, error) {
 	var resp Order
 	if val, err := c.client.QueryWorkflow(ctx, workflowID, runID, ReadQueryName); err != nil {
@@ -224,12 +228,14 @@ func (c *orderClient) Read(ctx context.Context, workflowID string, runID string)
 	return &resp, nil
 }
 
-// order.order.Delete sends a(n) order.order.Delete signal to an existing workflow
+// Удаление workflow. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 func (c *orderClient) Delete(ctx context.Context, workflowID string, runID string) error {
 	return c.client.SignalWorkflow(ctx, workflowID, runID, DeleteSignalName, nil)
 }
 
-// order.order.Update sends a(n) order.order.Update update to an existing workflow
+// Обновление инофрмации в запущенном workflow
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (c *orderClient) Update(ctx context.Context, workflowID string, runID string, req *UpdateOrderRequest, opts ...*UpdateOptions) (*Order, error) {
 	// initialize update options
 	o := NewUpdateOptions()
@@ -247,7 +253,8 @@ func (c *orderClient) Update(ctx context.Context, workflowID string, runID strin
 	return handle.Get(ctx)
 }
 
-// order.order.Update sends a(n) order.order.Update update to an existing workflow
+// Обновление инофрмации в запущенном workflow
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (c *orderClient) UpdateAsync(ctx context.Context, workflowID string, runID string, req *UpdateOrderRequest, opts ...*UpdateOptions) (UpdateHandle, error) {
 	// initialize update options
 	var o *UpdateOptions
@@ -411,16 +418,20 @@ type CreateOrderRun interface {
 	// Terminate terminates a workflow in execution, returning an error if applicable
 	Terminate(ctx context.Context, reason string, details ...interface{}) error
 
-	// order.order.Read executes a(n) order.order.Read query
+	// Получение информации из запущенного workflow
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	Read(ctx context.Context) (*Order, error)
 
-	// order.order.Delete sends a(n) order.order.Delete signal
+	// Удаление workflow. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 	Delete(ctx context.Context) error
 
-	// order.order.Update executes a(n) order.order.Update update
+	// Обновление инофрмации в запущенном workflow
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	Update(ctx context.Context, req *UpdateOrderRequest, opts ...*UpdateOptions) (*Order, error)
 
-	// order.order.UpdateAsync sends a(n) order.order.Update update to the workflow
+	// Обновление инофрмации в запущенном workflow
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	UpdateAsync(ctx context.Context, req *UpdateOrderRequest, opts ...*UpdateOptions) (UpdateHandle, error)
 }
 
@@ -460,22 +471,26 @@ func (r *createOrderRun) Terminate(ctx context.Context, reason string, details .
 	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
 }
 
-// order.order.Read executes a(n) order.order.Read query
+// Получение информации из запущенного workflow
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (r *createOrderRun) Read(ctx context.Context) (*Order, error) {
 	return r.client.Read(ctx, r.ID(), "")
 }
 
-// order.order.Delete sends a(n) order.order.Delete signal
+// Удаление workflow. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 func (r *createOrderRun) Delete(ctx context.Context) error {
 	return r.client.Delete(ctx, r.ID(), "")
 }
 
-// order.order.Update executes a(n) order.order.Update workflow update
+// Обновление инофрмации в запущенном workflow
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (r *createOrderRun) Update(ctx context.Context, req *UpdateOrderRequest, opts ...*UpdateOptions) (*Order, error) {
 	return r.client.Update(ctx, r.ID(), r.RunID(), req, opts...)
 }
 
-// UpdateAsync start a(n) order.order.Update workflow update and returns a handle to the update
+// Обновление инофрмации в запущенном workflow
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (r *createOrderRun) UpdateAsync(ctx context.Context, req *UpdateOrderRequest, opts ...*UpdateOptions) (UpdateHandle, error) {
 	return r.client.UpdateAsync(ctx, r.ID(), r.RunID(), req, opts...)
 }
@@ -604,7 +619,7 @@ func (o *UpdateOptions) WithWaitPolicy(policy client.WorkflowUpdateStage) *Updat
 
 // Reference to generated workflow functions
 var (
-	// CreateOrderFunction implements a "order.order.CreateOrder" workflow
+	// Это основной workflow
 	CreateOrderFunction func(workflow.Context, *CreateOrderRequest) error
 )
 
@@ -612,7 +627,7 @@ var (
 type (
 	// OrderWorkflowFunctions describes a mockable dependency for inlining workflows within other workflows
 	OrderWorkflowFunctions interface {
-		// CreateOrder executes a "order.order.CreateOrder" workflow inline
+		// Это основной workflow
 		CreateOrder(workflow.Context, *CreateOrderRequest) error
 	}
 	// orderWorkflowFunctions provides an internal OrderWorkflowFunctions implementation
@@ -623,7 +638,7 @@ func NewOrderWorkflowFunctions() OrderWorkflowFunctions {
 	return &orderWorkflowFunctions{}
 }
 
-// CreateOrder executes a "order.order.CreateOrder" workflow inline
+// Это основной workflow
 func (f *orderWorkflowFunctions) CreateOrder(ctx workflow.Context, req *CreateOrderRequest) error {
 	if CreateOrderFunction == nil {
 		return errors.New("CreateOrder requires workflow registration via RegisterOrderWorkflows or RegisterCreateOrderWorkflow")
@@ -633,7 +648,7 @@ func (f *orderWorkflowFunctions) CreateOrder(ctx workflow.Context, req *CreateOr
 
 // OrderWorkflows provides methods for initializing new order.order workflow values
 type OrderWorkflows interface {
-	// CreateOrder initializes a new a(n) CreateOrderWorkflow implementation
+	// Это основной workflow
 	CreateOrder(ctx workflow.Context, input *CreateOrderWorkflowInput) (CreateOrderWorkflow, error)
 }
 
@@ -685,21 +700,23 @@ type CreateOrderWorkflowInput struct {
 	Delete *DeleteSignal
 }
 
-// CreateOrderWorkflow describes a(n) order.order.CreateOrder workflow implementation
+// Это основной workflow
 //
-// workflow details: (id: "orders/${! id }")
+// workflow details: (name: "order.order.CreateOrder", id: "orders/${! id }")
 type CreateOrderWorkflow interface {
 	// Execute defines the entrypoint to a(n) order.order.CreateOrder workflow
 	Execute(ctx workflow.Context) error
 
-	// order.order.Read implements a(n) order.order.Read query handler
+	// Получение информации из запущенного workflow
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	Read() (*Order, error)
 
-	// order.order.Update implements a(n) order.order.Update update handler
+	// Обновление инофрмации в запущенном workflow
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	Update(workflow.Context, *UpdateOrderRequest) (*Order, error)
 }
 
-// CreateOrderChild executes a child order.order.CreateOrder workflow and blocks until error or response received
+// Это основной workflow
 func CreateOrderChild(ctx workflow.Context, req *CreateOrderRequest, options ...*CreateOrderChildOptions) error {
 	childRun, err := CreateOrderChildAsync(ctx, req, options...)
 	if err != nil {
@@ -708,7 +725,7 @@ func CreateOrderChild(ctx workflow.Context, req *CreateOrderRequest, options ...
 	return childRun.Get(ctx)
 }
 
-// CreateOrderChildAsync starts a child order.order.CreateOrder workflow and returns a handle to the child workflow run
+// Это основной workflow
 func CreateOrderChildAsync(ctx workflow.Context, req *CreateOrderRequest, options ...*CreateOrderChildOptions) (*CreateOrderChildRun, error) {
 	var o *CreateOrderChildOptions
 	if len(options) > 0 && options[0] != nil {
@@ -963,12 +980,14 @@ func (s *DeleteSignal) Select(sel workflow.Selector, fn func()) workflow.Selecto
 	})
 }
 
-// DeleteExternal sends a(n) order.order.Delete signal to an existing workflow
+// Удаление workflow. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 func DeleteExternal(ctx workflow.Context, workflowID string, runID string) error {
 	return DeleteExternalAsync(ctx, workflowID, runID).Get(ctx, nil)
 }
 
-// DeleteExternalAsync sends a(n) order.order.Delete signal to an existing workflow
+// Удаление workflow. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 func DeleteExternalAsync(ctx workflow.Context, workflowID string, runID string) workflow.Future {
 	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, DeleteSignalName, nil)
 }
@@ -1288,7 +1307,7 @@ func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
 	commands := []*v2.Command{
 		{
 			Name:                   "read",
-			Usage:                  "executes a order.order.Read query and blocks until error or response received",
+			Usage:                  "Получение информации из запущенного workflow https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers",
 			Category:               "QUERIES",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -1331,7 +1350,7 @@ func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
 		},
 		{
 			Name:                   "delete",
-			Usage:                  "executes a order.order.Delete signal",
+			Usage:                  "Удаление workflow. На самом деле это сигнал, который будет останавливать workflow с признаком отменен. https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers",
 			Category:               "SIGNALS",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -1365,7 +1384,7 @@ func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
 		},
 		{
 			Name:                   "update",
-			Usage:                  "executes a(n) order.order.Update update",
+			Usage:                  "Обновление инофрмации в запущенном workflow https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers",
 			Category:               "UPDATES",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -1443,7 +1462,7 @@ func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
 		},
 		{
 			Name:                   "create-order",
-			Usage:                  "executes a(n) order.order.CreateOrder workflow",
+			Usage:                  "Это основной workflow",
 			Category:               "WORKFLOWS",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,

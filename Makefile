@@ -20,7 +20,7 @@ gen-temporal:
      --go_temporal_opt="cli-categories=true" \
      --go_temporal_opt="cli-enabled=true" \
      --go_temporal_opt="workflow-update-enabled=true" \
-     proto/order.proto
+     proto/temporal.proto
 
 gen-server:
 	protoc \

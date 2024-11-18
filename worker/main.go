@@ -13,19 +13,19 @@ import (
 )
 
 func main() {
+	// Инициализируем Worker сразу из кодгена с помощью cli
 	app, err := temporal.NewOrderCli(
-		temporal.NewOrderCliOptions().WithWorker(func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
-			w := worker.New(c, temporal.OrderTaskQueue, worker.Options{})
-			//pb.RegisterOrderActivities(w, &crud.Activity{})
-			temporal.RegisterCreateOrderWorkflow(w, tmc.Register)
-			return w, nil
-		}),
+		temporal.NewOrderCliOptions().WithWorker(
+			func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
+				w := worker.New(c, temporal.OrderTaskQueue, worker.Options{})
+				temporal.RegisterCreateOrderWorkflow(w, tmc.Register)
+				return w, nil
+			}),
 	)
 	if err != nil {
 		log.Fatalf("error initializing example cli: %v", err)
 	}
 
-	// run cli
 	if err := app.Run(os.Args); err != nil {
 		log.Fatal(err)
 	}

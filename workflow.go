@@ -6,26 +6,24 @@ import (
 	"temporal-master-class/generated/temporal"
 )
 
-func Register(ctx workflow.Context, input *temporal.CreateOrderWorkflowInput) (temporal.CreateOrderWorkflow, error) {
+func Register(_ workflow.Context, input *temporal.CreateOrderWorkflowInput) (temporal.CreateOrderWorkflow, error) {
 	return &Workflow{
-		req:    input.Req,
+		order: &temporal.Order{
+			Id:       input.Req.Id,
+			Address:  input.Req.Address,
+			Products: input.Req.Products,
+			Total:    calculateTotal(input.Req.Products),
+		},
 		delete: input.Delete,
 	}, nil
 }
 
 type Workflow struct {
-	req    *temporal.CreateOrderRequest
 	delete *temporal.DeleteSignal
 	order  *temporal.Order
 }
 
 func (w *Workflow) Execute(ctx workflow.Context) error {
-	w.order = &temporal.Order{
-		Id:       w.req.GetId(),
-		Address:  w.req.GetAddress(),
-		Products: w.req.GetProducts(),
-		Total:    calculateTotal(w.req.GetProducts()),
-	}
 	// Ожидаем удаления
 	w.delete.Receive(ctx)
 	return workflow.ErrCanceled
@@ -36,9 +34,9 @@ func (w *Workflow) Read() (*temporal.Order, error) {
 }
 
 func (w *Workflow) Update(_ workflow.Context, req *temporal.UpdateOrderRequest) (*temporal.Order, error) {
-	w.order.Address = req.GetAddress()
-	w.order.Products = req.GetProducts()
-	w.order.Total = calculateTotal(req.GetProducts())
+	w.order.Address = req.Address
+	w.order.Products = req.Products
+	w.order.Total = calculateTotal(req.Products)
 	return w.order, nil
 }
 
