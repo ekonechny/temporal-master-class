@@ -11,7 +11,11 @@ import (
 
 func Register(ctx workflow.Context, input *temporal.CustomerFlowWorkflowInput) (temporal.CustomerFlowWorkflow, error) {
 	return &Workflow{
-		req:                 input.Req,
+		profile: &temporal.Profile{
+			Id:    utils.WorkflowID(ctx),
+			Name:  input.Req.Name,
+			Phone: input.Req.Phone,
+		},
 		deleteProfileSignal: input.DeleteProfile,
 		deleteCartSignal:    input.DeleteCart,
 		setAddressSignal:    input.SetAddress,
@@ -19,23 +23,17 @@ func Register(ctx workflow.Context, input *temporal.CustomerFlowWorkflowInput) (
 }
 
 type Workflow struct {
-	req                 *temporal.CustomerFlowRequest
+	profile             *temporal.Profile
+	cart                *temporal.Cart
 	deleteProfileSignal *temporal.DeleteProfileSignal
 	deleteCartSignal    *temporal.DeleteCartSignal
 	setAddressSignal    *temporal.SetAddressSignal
-	profile             *temporal.Profile
-	cart                *temporal.Cart
 }
 
 func (w *Workflow) Execute(ctx workflow.Context) error {
-	// Создаем профиль
-	w.profile = &temporal.Profile{
-		Id:    utils.WorkflowID(ctx),
-		Name:  w.req.GetName(),
-		Phone: w.req.GetPhone(),
-	}
-	workflow.GetLogger(ctx).Info("new profile", "profile", w.profile)
-	// Ожидаем 1 минуту пока пользователь введет адрес или отменяем его "жизненный цикл"
+	// Ожидаем 1 минуту:
+	//	- пока пользователь введет адрес
+	//  - или отменяем его "жизненный цикл"
 	var isCancelled bool
 	sel := workflow.NewSelector(ctx)
 	w.setAddressSignal.Select(sel, func(request *temporal.SetAddressRequest) {
@@ -49,6 +47,11 @@ func (w *Workflow) Execute(ctx workflow.Context) error {
 		return workflow.ErrCanceled
 	}
 
+	// Дальше запускаем бесконечный цикл:
+	// - обрабатываем обновление адреса
+	// - удаление профиля (с завершением цикла)
+	// - удаление корзины
+	// событие обновления корзины и создания заказа живут в отдельных хэндлерах
 	var stop bool
 	for !stop {
 		sel := workflow.NewSelector(ctx)
