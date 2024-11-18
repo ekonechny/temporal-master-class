@@ -96,10 +96,10 @@ make deps
 │       └── builder_test.go
 
 ├── proto
-│   ├── checkout.proto
-│   ├── common.proto
-│   ├── customer.proto
-│   ├── processing.proto
+│   ├── checkout.proto --> Workflow создания заказа
+│   ├── common.proto --> Общие сущности
+│   ├── customer.proto --> Workflow, описывающий жизненный цикл пользователя
+│   ├── processing.proto --> Workflow для процессинга заказа
 │   └── server.proto
 └── server.http  --> Примеры запросов к GRPC-серверу
 ```
