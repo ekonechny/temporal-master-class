@@ -9,10 +9,13 @@ import "common.proto";
 option go_package = "temporal-master-class/internal/generated/temporal";
 
 service Customer {
+  // Очередь задач
+  // https://docs.temporal.io/workers#task-queue
   option (temporal.v1.service) = {
     task_queue: "general"
   };
 
+  // Это основной workflow, представляющий жизненный цикл пользователя
   rpc CustomerFlow(CustomerFlowRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
       id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
@@ -36,36 +39,55 @@ service Customer {
   }
 
   // Profile
+
+  // Получение профиля из запущенного workflow
+  // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
   rpc GetProfile(google.protobuf.Empty) returns (Profile) {
     option (temporal.v1.query) = {};
   }
 
+  // Обновление профиля в запущенном workflow
+  // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
   rpc UpdateProfile(UpdateProfileRequest) returns (Profile) {
     option (temporal.v1.update) = {};
   }
 
+  // Удаление профиля. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+  // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
   rpc DeleteProfile(google.protobuf.Empty) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = {};
   }
 
   // Address
+
+  // Установка адреса
+  // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
   rpc SetAddress(SetAddressRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = {};
   }
 
   // Cart
+
+  // Получение активной корзины пользователя
+  // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
   rpc GetCart(google.protobuf.Empty) returns (Cart) {
     option (temporal.v1.query) = {};
   }
 
+  // Обновление или создание корзины
+  // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
   rpc UpdateCart(UpdateCartRequest) returns (Cart) {
     option (temporal.v1.update) = {};
   }
 
+  // Удаление корзины юзера
+  // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
   rpc DeleteCart(google.protobuf.Empty) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = {};
   }
 
+  // Создание заказа через update-handler
+  // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
   rpc Checkout(CheckoutRequest) returns (Order) {
     option (temporal.v1.update) = {};
   }
