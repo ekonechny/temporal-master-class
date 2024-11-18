@@ -70,7 +70,7 @@ const (
 
 // CustomerClient describes a client for a(n) temporal.Customer worker
 type CustomerClient interface {
-	// CustomerFlow executes a(n) temporal.Customer.CustomerFlow workflow and blocks until error or response received
+	// Это основной workflow, представляющий жизненный цикл пользователя
 	CustomerFlow(ctx context.Context, req *CustomerFlowRequest, opts ...*CustomerFlowOptions) error
 
 	// CustomerFlowAsync starts a(n) temporal.Customer.CustomerFlow workflow and returns a handle to the workflow run
@@ -85,22 +85,28 @@ type CustomerClient interface {
 	// TerminateWorkflow an existing workflow execution
 	TerminateWorkflow(ctx context.Context, workflowID string, runID string, reason string, details ...interface{}) error
 
-	// Cart
+	// Получение активной корзины пользователя
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	GetCart(ctx context.Context, workflowID string, runID string) (*Cart, error)
 
-	// Profile
+	// Получение профиля из запущенного workflow
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	GetProfile(ctx context.Context, workflowID string, runID string) (*Profile, error)
 
-	// temporal.Customer.DeleteCart sends a(n) temporal.Customer.DeleteCart signal
+	// Удаление корзины юзера
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 	DeleteCart(ctx context.Context, workflowID string, runID string) error
 
-	// temporal.Customer.DeleteProfile sends a(n) temporal.Customer.DeleteProfile signal
+	// Удаление профиля. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 	DeleteProfile(ctx context.Context, workflowID string, runID string) error
 
-	// Address
+	// Установка адреса
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 	SetAddress(ctx context.Context, workflowID string, runID string, signal *SetAddressRequest) error
 
-	// Checkout executes a(n) temporal.Customer.Checkout update and blocks until update completion
+	// Создание заказа через update-handler
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	Checkout(ctx context.Context, workflowID string, runID string, req *CheckoutRequest, opts ...*CheckoutOptions) (*Order, error)
 
 	// CheckoutAsync starts a(n) temporal.Customer.Checkout update and returns a handle to the workflow update
@@ -109,7 +115,8 @@ type CustomerClient interface {
 	// GetCheckout retrieves a handle to an existing temporal.Customer.Checkout update
 	GetCheckout(ctx context.Context, req client.GetWorkflowUpdateHandleOptions) (CheckoutHandle, error)
 
-	// UpdateCart executes a(n) temporal.Customer.UpdateCart update and blocks until update completion
+	// Обновление или создание корзины
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	UpdateCart(ctx context.Context, workflowID string, runID string, req *UpdateCartRequest, opts ...*UpdateCartOptions) (*Cart, error)
 
 	// UpdateCartAsync starts a(n) temporal.Customer.UpdateCart update and returns a handle to the workflow update
@@ -118,7 +125,8 @@ type CustomerClient interface {
 	// GetUpdateCart retrieves a handle to an existing temporal.Customer.UpdateCart update
 	GetUpdateCart(ctx context.Context, req client.GetWorkflowUpdateHandleOptions) (UpdateCartHandle, error)
 
-	// UpdateProfile executes a(n) temporal.Customer.UpdateProfile update and blocks until update completion
+	// Обновление профиля в запущенном workflow
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	UpdateProfile(ctx context.Context, workflowID string, runID string, req *UpdateProfileRequest, opts ...*UpdateProfileOptions) (*Profile, error)
 
 	// UpdateProfileAsync starts a(n) temporal.Customer.UpdateProfile update and returns a handle to the workflow update
@@ -193,7 +201,7 @@ func (opts *customerClientOptions) getLogger() *slog.Logger {
 	return slog.Default()
 }
 
-// temporal.Customer.CustomerFlow executes a temporal.Customer.CustomerFlow workflow and blocks until error or response received
+// Это основной workflow, представляющий жизненный цикл пользователя
 func (c *customerClient) CustomerFlow(ctx context.Context, req *CustomerFlowRequest, options ...*CustomerFlowOptions) error {
 	run, err := c.CustomerFlowAsync(ctx, req, options...)
 	if err != nil {
@@ -202,7 +210,7 @@ func (c *customerClient) CustomerFlow(ctx context.Context, req *CustomerFlowRequ
 	return run.Get(ctx)
 }
 
-// CustomerFlowAsync starts a(n) temporal.Customer.CustomerFlow workflow and returns a handle to the workflow run
+// Это основной workflow, представляющий жизненный цикл пользователя
 func (c *customerClient) CustomerFlowAsync(ctx context.Context, req *CustomerFlowRequest, options ...*CustomerFlowOptions) (CustomerFlowRun, error) {
 	var o *CustomerFlowOptions
 	if len(options) > 0 && options[0] != nil {
@@ -245,7 +253,8 @@ func (c *customerClient) TerminateWorkflow(ctx context.Context, workflowID strin
 	return c.client.TerminateWorkflow(ctx, workflowID, runID, reason, details...)
 }
 
-// Cart
+// Получение активной корзины пользователя
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (c *customerClient) GetCart(ctx context.Context, workflowID string, runID string) (*Cart, error) {
 	var resp Cart
 	if val, err := c.client.QueryWorkflow(ctx, workflowID, runID, GetCartQueryName); err != nil {
@@ -256,7 +265,8 @@ func (c *customerClient) GetCart(ctx context.Context, workflowID string, runID s
 	return &resp, nil
 }
 
-// Profile
+// Получение профиля из запущенного workflow
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (c *customerClient) GetProfile(ctx context.Context, workflowID string, runID string) (*Profile, error) {
 	var resp Profile
 	if val, err := c.client.QueryWorkflow(ctx, workflowID, runID, GetProfileQueryName); err != nil {
@@ -267,22 +277,26 @@ func (c *customerClient) GetProfile(ctx context.Context, workflowID string, runI
 	return &resp, nil
 }
 
-// temporal.Customer.DeleteCart sends a(n) temporal.Customer.DeleteCart signal to an existing workflow
+// Удаление корзины юзера
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 func (c *customerClient) DeleteCart(ctx context.Context, workflowID string, runID string) error {
 	return c.client.SignalWorkflow(ctx, workflowID, runID, DeleteCartSignalName, nil)
 }
 
-// temporal.Customer.DeleteProfile sends a(n) temporal.Customer.DeleteProfile signal to an existing workflow
+// Удаление профиля. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 func (c *customerClient) DeleteProfile(ctx context.Context, workflowID string, runID string) error {
 	return c.client.SignalWorkflow(ctx, workflowID, runID, DeleteProfileSignalName, nil)
 }
 
-// Address
+// Установка адреса
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 func (c *customerClient) SetAddress(ctx context.Context, workflowID string, runID string, signal *SetAddressRequest) error {
 	return c.client.SignalWorkflow(ctx, workflowID, runID, SetAddressSignalName, signal)
 }
 
-// temporal.Customer.Checkout sends a(n) temporal.Customer.Checkout update to an existing workflow
+// Создание заказа через update-handler
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (c *customerClient) Checkout(ctx context.Context, workflowID string, runID string, req *CheckoutRequest, opts ...*CheckoutOptions) (*Order, error) {
 	// initialize update options
 	o := NewCheckoutOptions()
@@ -300,7 +314,8 @@ func (c *customerClient) Checkout(ctx context.Context, workflowID string, runID 
 	return handle.Get(ctx)
 }
 
-// temporal.Customer.Checkout sends a(n) temporal.Customer.Checkout update to an existing workflow
+// Создание заказа через update-handler
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (c *customerClient) CheckoutAsync(ctx context.Context, workflowID string, runID string, req *CheckoutRequest, opts ...*CheckoutOptions) (CheckoutHandle, error) {
 	// initialize update options
 	var o *CheckoutOptions
@@ -332,7 +347,8 @@ func (c *customerClient) GetCheckout(ctx context.Context, req client.GetWorkflow
 	}, nil
 }
 
-// temporal.Customer.UpdateCart sends a(n) temporal.Customer.UpdateCart update to an existing workflow
+// Обновление или создание корзины
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (c *customerClient) UpdateCart(ctx context.Context, workflowID string, runID string, req *UpdateCartRequest, opts ...*UpdateCartOptions) (*Cart, error) {
 	// initialize update options
 	o := NewUpdateCartOptions()
@@ -350,7 +366,8 @@ func (c *customerClient) UpdateCart(ctx context.Context, workflowID string, runI
 	return handle.Get(ctx)
 }
 
-// temporal.Customer.UpdateCart sends a(n) temporal.Customer.UpdateCart update to an existing workflow
+// Обновление или создание корзины
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (c *customerClient) UpdateCartAsync(ctx context.Context, workflowID string, runID string, req *UpdateCartRequest, opts ...*UpdateCartOptions) (UpdateCartHandle, error) {
 	// initialize update options
 	var o *UpdateCartOptions
@@ -382,7 +399,8 @@ func (c *customerClient) GetUpdateCart(ctx context.Context, req client.GetWorkfl
 	}, nil
 }
 
-// temporal.Customer.UpdateProfile sends a(n) temporal.Customer.UpdateProfile update to an existing workflow
+// Обновление профиля в запущенном workflow
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (c *customerClient) UpdateProfile(ctx context.Context, workflowID string, runID string, req *UpdateProfileRequest, opts ...*UpdateProfileOptions) (*Profile, error) {
 	// initialize update options
 	o := NewUpdateProfileOptions()
@@ -400,7 +418,8 @@ func (c *customerClient) UpdateProfile(ctx context.Context, workflowID string, r
 	return handle.Get(ctx)
 }
 
-// temporal.Customer.UpdateProfile sends a(n) temporal.Customer.UpdateProfile update to an existing workflow
+// Обновление профиля в запущенном workflow
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (c *customerClient) UpdateProfileAsync(ctx context.Context, workflowID string, runID string, req *UpdateProfileRequest, opts ...*UpdateProfileOptions) (UpdateProfileHandle, error) {
 	// initialize update options
 	var o *UpdateProfileOptions
@@ -564,37 +583,48 @@ type CustomerFlowRun interface {
 	// Terminate terminates a workflow in execution, returning an error if applicable
 	Terminate(ctx context.Context, reason string, details ...interface{}) error
 
-	// Profile
+	// Получение профиля из запущенного workflow
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	GetProfile(ctx context.Context) (*Profile, error)
 
-	// Cart
+	// Получение активной корзины пользователя
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	GetCart(ctx context.Context) (*Cart, error)
 
-	// temporal.Customer.DeleteProfile sends a(n) temporal.Customer.DeleteProfile signal
+	// Удаление профиля. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 	DeleteProfile(ctx context.Context) error
 
-	// Address
+	// Установка адреса
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 	SetAddress(ctx context.Context, req *SetAddressRequest) error
 
-	// temporal.Customer.DeleteCart sends a(n) temporal.Customer.DeleteCart signal
+	// Удаление корзины юзера
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 	DeleteCart(ctx context.Context) error
 
-	// temporal.Customer.UpdateProfile executes a(n) temporal.Customer.UpdateProfile update
+	// Обновление профиля в запущенном workflow
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	UpdateProfile(ctx context.Context, req *UpdateProfileRequest, opts ...*UpdateProfileOptions) (*Profile, error)
 
-	// temporal.Customer.UpdateProfileAsync sends a(n) temporal.Customer.UpdateProfile update to the workflow
+	// Обновление профиля в запущенном workflow
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	UpdateProfileAsync(ctx context.Context, req *UpdateProfileRequest, opts ...*UpdateProfileOptions) (UpdateProfileHandle, error)
 
-	// temporal.Customer.UpdateCart executes a(n) temporal.Customer.UpdateCart update
+	// Обновление или создание корзины
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	UpdateCart(ctx context.Context, req *UpdateCartRequest, opts ...*UpdateCartOptions) (*Cart, error)
 
-	// temporal.Customer.UpdateCartAsync sends a(n) temporal.Customer.UpdateCart update to the workflow
+	// Обновление или создание корзины
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	UpdateCartAsync(ctx context.Context, req *UpdateCartRequest, opts ...*UpdateCartOptions) (UpdateCartHandle, error)
 
-	// temporal.Customer.Checkout executes a(n) temporal.Customer.Checkout update
+	// Создание заказа через update-handler
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	Checkout(ctx context.Context, req *CheckoutRequest, opts ...*CheckoutOptions) (*Order, error)
 
-	// temporal.Customer.CheckoutAsync sends a(n) temporal.Customer.Checkout update to the workflow
+	// Создание заказа через update-handler
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	CheckoutAsync(ctx context.Context, req *CheckoutRequest, opts ...*CheckoutOptions) (CheckoutHandle, error)
 }
 
@@ -634,57 +664,68 @@ func (r *customerFlowRun) Terminate(ctx context.Context, reason string, details 
 	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
 }
 
-// Profile
+// Получение профиля из запущенного workflow
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (r *customerFlowRun) GetProfile(ctx context.Context) (*Profile, error) {
 	return r.client.GetProfile(ctx, r.ID(), "")
 }
 
-// Cart
+// Получение активной корзины пользователя
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (r *customerFlowRun) GetCart(ctx context.Context) (*Cart, error) {
 	return r.client.GetCart(ctx, r.ID(), "")
 }
 
-// temporal.Customer.DeleteProfile sends a(n) temporal.Customer.DeleteProfile signal
+// Удаление профиля. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 func (r *customerFlowRun) DeleteProfile(ctx context.Context) error {
 	return r.client.DeleteProfile(ctx, r.ID(), "")
 }
 
-// Address
+// Установка адреса
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 func (r *customerFlowRun) SetAddress(ctx context.Context, req *SetAddressRequest) error {
 	return r.client.SetAddress(ctx, r.ID(), "", req)
 }
 
-// temporal.Customer.DeleteCart sends a(n) temporal.Customer.DeleteCart signal
+// Удаление корзины юзера
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 func (r *customerFlowRun) DeleteCart(ctx context.Context) error {
 	return r.client.DeleteCart(ctx, r.ID(), "")
 }
 
-// temporal.Customer.UpdateProfile executes a(n) temporal.Customer.UpdateProfile workflow update
+// Обновление профиля в запущенном workflow
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (r *customerFlowRun) UpdateProfile(ctx context.Context, req *UpdateProfileRequest, opts ...*UpdateProfileOptions) (*Profile, error) {
 	return r.client.UpdateProfile(ctx, r.ID(), r.RunID(), req, opts...)
 }
 
-// UpdateProfileAsync start a(n) temporal.Customer.UpdateProfile workflow update and returns a handle to the update
+// Обновление профиля в запущенном workflow
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (r *customerFlowRun) UpdateProfileAsync(ctx context.Context, req *UpdateProfileRequest, opts ...*UpdateProfileOptions) (UpdateProfileHandle, error) {
 	return r.client.UpdateProfileAsync(ctx, r.ID(), r.RunID(), req, opts...)
 }
 
-// temporal.Customer.UpdateCart executes a(n) temporal.Customer.UpdateCart workflow update
+// Обновление или создание корзины
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (r *customerFlowRun) UpdateCart(ctx context.Context, req *UpdateCartRequest, opts ...*UpdateCartOptions) (*Cart, error) {
 	return r.client.UpdateCart(ctx, r.ID(), r.RunID(), req, opts...)
 }
 
-// UpdateCartAsync start a(n) temporal.Customer.UpdateCart workflow update and returns a handle to the update
+// Обновление или создание корзины
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (r *customerFlowRun) UpdateCartAsync(ctx context.Context, req *UpdateCartRequest, opts ...*UpdateCartOptions) (UpdateCartHandle, error) {
 	return r.client.UpdateCartAsync(ctx, r.ID(), r.RunID(), req, opts...)
 }
 
-// temporal.Customer.Checkout executes a(n) temporal.Customer.Checkout workflow update
+// Создание заказа через update-handler
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (r *customerFlowRun) Checkout(ctx context.Context, req *CheckoutRequest, opts ...*CheckoutOptions) (*Order, error) {
 	return r.client.Checkout(ctx, r.ID(), r.RunID(), req, opts...)
 }
 
-// CheckoutAsync start a(n) temporal.Customer.Checkout workflow update and returns a handle to the update
+// Создание заказа через update-handler
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (r *customerFlowRun) CheckoutAsync(ctx context.Context, req *CheckoutRequest, opts ...*CheckoutOptions) (CheckoutHandle, error) {
 	return r.client.CheckoutAsync(ctx, r.ID(), r.RunID(), req, opts...)
 }
@@ -1057,7 +1098,7 @@ func (o *UpdateProfileOptions) WithWaitPolicy(policy client.WorkflowUpdateStage)
 
 // Reference to generated workflow functions
 var (
-	// CustomerFlowFunction implements a "temporal.Customer.CustomerFlow" workflow
+	// Это основной workflow, представляющий жизненный цикл пользователя
 	CustomerFlowFunction func(workflow.Context, *CustomerFlowRequest) error
 )
 
@@ -1065,7 +1106,7 @@ var (
 type (
 	// CustomerWorkflowFunctions describes a mockable dependency for inlining workflows within other workflows
 	CustomerWorkflowFunctions interface {
-		// CustomerFlow executes a "temporal.Customer.CustomerFlow" workflow inline
+		// Это основной workflow, представляющий жизненный цикл пользователя
 		CustomerFlow(workflow.Context, *CustomerFlowRequest) error
 	}
 	// customerWorkflowFunctions provides an internal CustomerWorkflowFunctions implementation
@@ -1076,7 +1117,7 @@ func NewCustomerWorkflowFunctions() CustomerWorkflowFunctions {
 	return &customerWorkflowFunctions{}
 }
 
-// CustomerFlow executes a "temporal.Customer.CustomerFlow" workflow inline
+// Это основной workflow, представляющий жизненный цикл пользователя
 func (f *customerWorkflowFunctions) CustomerFlow(ctx workflow.Context, req *CustomerFlowRequest) error {
 	if CustomerFlowFunction == nil {
 		return errors.New("CustomerFlow requires workflow registration via RegisterCustomerWorkflows or RegisterCustomerFlowWorkflow")
@@ -1086,7 +1127,7 @@ func (f *customerWorkflowFunctions) CustomerFlow(ctx workflow.Context, req *Cust
 
 // CustomerWorkflows provides methods for initializing new temporal.Customer workflow values
 type CustomerWorkflows interface {
-	// CustomerFlow initializes a new a(n) CustomerFlowWorkflow implementation
+	// Это основной workflow, представляющий жизненный цикл пользователя
 	CustomerFlow(ctx workflow.Context, input *CustomerFlowWorkflowInput) (CustomerFlowWorkflow, error)
 }
 
@@ -1161,30 +1202,35 @@ type CustomerFlowWorkflowInput struct {
 	DeleteCart    *DeleteCartSignal
 }
 
-// CustomerFlowWorkflow describes a(n) temporal.Customer.CustomerFlow workflow implementation
+// Это основной workflow, представляющий жизненный цикл пользователя
 //
-// workflow details: (id: "customers/${! customerId.or(id.or(uuid_v4())) }")
+// workflow details: (name: "temporal.Customer.CustomerFlow", id: "customers/${! customerId.or(id.or(uuid_v4())) }")
 type CustomerFlowWorkflow interface {
 	// Execute defines the entrypoint to a(n) temporal.Customer.CustomerFlow workflow
 	Execute(ctx workflow.Context) error
 
-	// Profile
+	// Получение профиля из запущенного workflow
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	GetProfile() (*Profile, error)
 
-	// Cart
+	// Получение активной корзины пользователя
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	GetCart() (*Cart, error)
 
-	// temporal.Customer.UpdateProfile implements a(n) temporal.Customer.UpdateProfile update handler
+	// Обновление профиля в запущенном workflow
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	UpdateProfile(workflow.Context, *UpdateProfileRequest) (*Profile, error)
 
-	// temporal.Customer.UpdateCart implements a(n) temporal.Customer.UpdateCart update handler
+	// Обновление или создание корзины
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	UpdateCart(workflow.Context, *UpdateCartRequest) (*Cart, error)
 
-	// temporal.Customer.Checkout implements a(n) temporal.Customer.Checkout update handler
+	// Создание заказа через update-handler
+	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	Checkout(workflow.Context, *CheckoutRequest) (*Order, error)
 }
 
-// CustomerFlowChild executes a child temporal.Customer.CustomerFlow workflow and blocks until error or response received
+// Это основной workflow, представляющий жизненный цикл пользователя
 func CustomerFlowChild(ctx workflow.Context, req *CustomerFlowRequest, options ...*CustomerFlowChildOptions) error {
 	childRun, err := CustomerFlowChildAsync(ctx, req, options...)
 	if err != nil {
@@ -1193,7 +1239,7 @@ func CustomerFlowChild(ctx workflow.Context, req *CustomerFlowRequest, options .
 	return childRun.Get(ctx)
 }
 
-// CustomerFlowChildAsync starts a child temporal.Customer.CustomerFlow workflow and returns a handle to the child workflow run
+// Это основной workflow, представляющий жизненный цикл пользователя
 func CustomerFlowChildAsync(ctx workflow.Context, req *CustomerFlowRequest, options ...*CustomerFlowChildOptions) (*CustomerFlowChildRun, error) {
 	var o *CustomerFlowChildOptions
 	if len(options) > 0 && options[0] != nil {
@@ -1468,12 +1514,14 @@ func (s *DeleteCartSignal) Select(sel workflow.Selector, fn func()) workflow.Sel
 	})
 }
 
-// DeleteCartExternal sends a(n) temporal.Customer.DeleteCart signal to an existing workflow
+// Удаление корзины юзера
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 func DeleteCartExternal(ctx workflow.Context, workflowID string, runID string) error {
 	return DeleteCartExternalAsync(ctx, workflowID, runID).Get(ctx, nil)
 }
 
-// DeleteCartExternalAsync sends a(n) temporal.Customer.DeleteCart signal to an existing workflow
+// Удаление корзины юзера
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 func DeleteCartExternalAsync(ctx workflow.Context, workflowID string, runID string) workflow.Future {
 	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, DeleteCartSignalName, nil)
 }
@@ -1519,12 +1567,14 @@ func (s *DeleteProfileSignal) Select(sel workflow.Selector, fn func()) workflow.
 	})
 }
 
-// DeleteProfileExternal sends a(n) temporal.Customer.DeleteProfile signal to an existing workflow
+// Удаление профиля. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 func DeleteProfileExternal(ctx workflow.Context, workflowID string, runID string) error {
 	return DeleteProfileExternalAsync(ctx, workflowID, runID).Get(ctx, nil)
 }
 
-// DeleteProfileExternalAsync sends a(n) temporal.Customer.DeleteProfile signal to an existing workflow
+// Удаление профиля. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 func DeleteProfileExternalAsync(ctx workflow.Context, workflowID string, runID string) workflow.Future {
 	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, DeleteProfileSignalName, nil)
 }
@@ -1577,12 +1627,14 @@ func (s *SetAddressSignal) Select(sel workflow.Selector, fn func(*SetAddressRequ
 	})
 }
 
-// Address
+// Установка адреса
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 func SetAddressExternal(ctx workflow.Context, workflowID string, runID string, req *SetAddressRequest) error {
 	return SetAddressExternalAsync(ctx, workflowID, runID, req).Get(ctx, nil)
 }
 
-// Address
+// Установка адреса
+// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 func SetAddressExternalAsync(ctx workflow.Context, workflowID string, runID string, req *SetAddressRequest) workflow.Future {
 	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, SetAddressSignalName, req)
 }
@@ -2129,7 +2181,7 @@ func newCustomerCommands(options ...*CustomerCliOptions) ([]*v2.Command, error) 
 	commands := []*v2.Command{
 		{
 			Name:                   "get-cart",
-			Usage:                  "Cart",
+			Usage:                  "Получение активной корзины пользователя https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers",
 			Category:               "QUERIES",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -2172,7 +2224,7 @@ func newCustomerCommands(options ...*CustomerCliOptions) ([]*v2.Command, error) 
 		},
 		{
 			Name:                   "get-profile",
-			Usage:                  "Profile",
+			Usage:                  "Получение профиля из запущенного workflow https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers",
 			Category:               "QUERIES",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -2215,7 +2267,7 @@ func newCustomerCommands(options ...*CustomerCliOptions) ([]*v2.Command, error) 
 		},
 		{
 			Name:                   "delete-cart",
-			Usage:                  "executes a temporal.Customer.DeleteCart signal",
+			Usage:                  "Удаление корзины юзера https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers",
 			Category:               "SIGNALS",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -2249,7 +2301,7 @@ func newCustomerCommands(options ...*CustomerCliOptions) ([]*v2.Command, error) 
 		},
 		{
 			Name:                   "delete-profile",
-			Usage:                  "executes a temporal.Customer.DeleteProfile signal",
+			Usage:                  "Удаление профиля. На самом деле это сигнал, который будет останавливать workflow с признаком отменен. https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers",
 			Category:               "SIGNALS",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -2283,7 +2335,7 @@ func newCustomerCommands(options ...*CustomerCliOptions) ([]*v2.Command, error) 
 		},
 		{
 			Name:                   "set-address",
-			Usage:                  "Address",
+			Usage:                  "Установка адреса https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers",
 			Category:               "SIGNALS",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -2331,7 +2383,7 @@ func newCustomerCommands(options ...*CustomerCliOptions) ([]*v2.Command, error) 
 		},
 		{
 			Name:                   "checkout",
-			Usage:                  "executes a(n) temporal.Customer.Checkout update",
+			Usage:                  "Создание заказа через update-handler https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers",
 			Category:               "UPDATES",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -2404,7 +2456,7 @@ func newCustomerCommands(options ...*CustomerCliOptions) ([]*v2.Command, error) 
 		},
 		{
 			Name:                   "update-cart",
-			Usage:                  "executes a(n) temporal.Customer.UpdateCart update",
+			Usage:                  "Обновление или создание корзины https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers",
 			Category:               "UPDATES",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -2477,7 +2529,7 @@ func newCustomerCommands(options ...*CustomerCliOptions) ([]*v2.Command, error) 
 		},
 		{
 			Name:                   "update-profile",
-			Usage:                  "executes a(n) temporal.Customer.UpdateProfile update",
+			Usage:                  "Обновление профиля в запущенном workflow https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers",
 			Category:               "UPDATES",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -2550,7 +2602,7 @@ func newCustomerCommands(options ...*CustomerCliOptions) ([]*v2.Command, error) 
 		},
 		{
 			Name:                   "customer-flow",
-			Usage:                  "executes a(n) temporal.Customer.CustomerFlow workflow",
+			Usage:                  "Это основной workflow, представляющий жизненный цикл пользователя",
 			Category:               "WORKFLOWS",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
