@@ -43,14 +43,14 @@ make deps
 ├── go.mod
 ├── go.sum
 ├── proto
-│   ├── server.proto -->  Простейший GRPC-сервер
+│   ├── server.proto
 │   └── temporal.proto --> Protofile для Temporal, описывающий жизненный цикл пользователя
 ├── server
-│   └── main.go --> Команда, для запуска GRPC-сервера
+│   └── main.go
 ├── server.http --> Примеры запросов к GRPC-серверу
 ├── worker
-│   └── main.go --> Команда, для запуска воркера
-└── workflow.go --> Основной workflow
+│   └── main.go
+└── workflow.go --> Основной workflow с жизненным циклом пользователя
 ```
 
 ## Запуск
