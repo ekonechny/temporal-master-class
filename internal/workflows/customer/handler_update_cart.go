@@ -16,8 +16,11 @@ func (w *Workflow) UpdateCart(ctx workflow.Context, request *temporal.UpdateCart
 		productIDs[i] = request.Products[i].GetId()
 	}
 
-	// Получаем те самые продукты
-	assortment, err := temporal.AssortmentGetProducts(ctx, &temporal.AssortmentGetProductsRequest{Ids: productIDs})
+	// Получаем те самые продукты c помощью activity
+	assortmentGetProductsReq := &temporal.AssortmentGetProductsRequest{
+		Ids: productIDs,
+	}
+	assortment, err := temporal.AssortmentGetProducts(ctx, assortmentGetProductsReq)
 	if err != nil {
 		return nil, err
 	}
