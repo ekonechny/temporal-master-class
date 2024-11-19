@@ -60,6 +60,8 @@ func (w *Workflow) Execute(ctx workflow.Context) (*temporal.Order, error) {
 		PaymentType: w.req.PaymentType,
 	}
 
+	// Здесь мы запускаем дочернее Workflow, но уже с политикой Abandon
+	// https://docs.temporal.io/encyclopedia/child-workflows#parent-close-policy
 	run, err := temporal.ProcessingFlowChildAsync(ctx, &temporal.ProcessingFlowRequest{
 		Id:          order.Id,
 		Customer:    order.Customer,
