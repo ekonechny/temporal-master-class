@@ -10,6 +10,8 @@ import (
 )
 
 // GetPayment - поллинг активити для получения статуса платежа каждые 15 секунд, пока он не сменит статус на New
+// Пример отсюда:
+// https://github.com/temporalio/samples-go/blob/main/polling/frequent/activities.go#L22
 func (a *Activities) GetPayment(ctx context.Context, req *temporal.PaymentStatusRequest) (*temporal.PaymentStatusResponse, error) {
 	for {
 		resp, err := a.paymentClient.GetPayment(ctx, req.Id)
