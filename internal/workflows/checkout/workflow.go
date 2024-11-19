@@ -31,11 +31,15 @@ func (w *Workflow) Execute(ctx workflow.Context) (*temporal.Order, error) {
 		return nil, err
 	}
 
+	// Пример компенсации, здесь больше и сложнее:
+	// https://github.com/temporalio/samples-go/blob/main/saga/workflow.go#L35
 	defer func() {
 		// Отменяем резерв
 		if err != nil {
-			// Если не получится отменить резерв, то лучше куда-то эскалировать
-			_ = temporal.AssortmentReserveCancel(ctx, &temporal.AssortmentReserveRequest{Products: reserveProducts})
+			// Если не получится отменить резерв, то лучше куда-то эскалировать или иметь фолбэк
+			_ = temporal.AssortmentReserveCancel(ctx, &temporal.AssortmentReserveRequest{
+				Products: reserveProducts,
+			})
 		}
 	}()
 
@@ -44,10 +48,12 @@ func (w *Workflow) Execute(ctx workflow.Context) (*temporal.Order, error) {
 		if err != nil {
 			return nil, err
 		}
+		// Пример компенсации, здесь больше и сложнее:
+		// https://github.com/temporalio/samples-go/blob/main/saga/workflow.go#L35
 		defer func() {
 			// Отменяем платеж
 			if err != nil {
-				// Если не получится отменить, то необходимо эскалировать
+				// Если не получится отменить резерв, то лучше куда-то эскалировать или иметь фолбэк
 				_ = temporal.PaymentCancel(ctx, &temporal.PaymentCancelRequest{
 					Id: p.Id,
 				})
