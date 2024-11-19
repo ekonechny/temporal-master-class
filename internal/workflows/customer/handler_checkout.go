@@ -8,6 +8,8 @@ import (
 	"temporal-master-class/internal/generated/temporal"
 )
 
+// Checkout - создает заказ через дочернее workflow, подробнее:
+// https://docs.temporal.io/encyclopedia/child-workflows
 func (w *Workflow) Checkout(ctx workflow.Context, request *temporal.CheckoutRequest) (*temporal.Order, error) {
 	if w.cart == nil {
 		return nil, errors.New("cart is empty")
