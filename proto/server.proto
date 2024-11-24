@@ -7,23 +7,22 @@ import "temporal.proto";
 
 option go_package = "temporal-master-class/generated/server";
 
-service Order {
-  rpc Create(order.CreateOrderRequest) returns (order.Order) {}
-  rpc Read(ReadOrderRequest) returns (order.Order) {}
-  rpc Update(UpdateOrderRequest) returns (order.Order) {}
-  rpc Delete(DeleteOrderRequest) returns (google.protobuf.Empty) {}
+service Customer {
+  rpc Create(temporal.CreateRequest) returns (temporal.Profile) {}
+  rpc Read(ReadRequest) returns (temporal.Profile) {}
+  rpc Update(UpdateRequest) returns (temporal.Profile) {}
+  rpc Delete(DeleteRequest) returns (google.protobuf.Empty) {}
 }
 
-message ReadOrderRequest {
+message ReadRequest {
   string id = 1;
 }
 
-message UpdateOrderRequest {
+message UpdateRequest {
   string id = 1;
-  string address = 2;
-  repeated order.Product products = 3;
+  string name = 2;
 }
 
-message DeleteOrderRequest {
+message DeleteRequest {
   string id = 1;
 }

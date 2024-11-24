@@ -1,72 +1,61 @@
 syntax="proto3";
 
-package order;
+package temporal;
 
 import "google/protobuf/empty.proto";
 import "temporal/v1/temporal.proto";
 
 option go_package = "temporal-master-class/generated/temporal";
 
-service order {
+service Customer {
   // Очередь задач
   // https://docs.temporal.io/workers#task-queue
   option (temporal.v1.service) = {
-    task_queue: "order-v1"
+    task_queue: "root-v1"
   };
 
-  // Это основной workflow
-  rpc CreateOrder(CreateOrderRequest) returns (google.protobuf.Empty) {
+  // Это основной workflow, представляющий жизненный цикл пользователя
+  rpc Create(CreateRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.workflow) = {
       id_reuse_policy: WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE
-      id: 'orders/${! id }'
+      id: 'customers/${! customerId.or(id.or(uuid_v4())) }'
+      // handlers
       query: { ref: "Read" }
       update: { ref: "Update" }
       signal: { ref: "Delete" }
     };
   }
 
-  // Получение информации из запущенного workflow
+  // Получение профиля из запущенного workflow
   // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
-  rpc Read(google.protobuf.Empty) returns (Order) {
+  rpc Read(google.protobuf.Empty) returns (Profile) {
     option (temporal.v1.query) = {};
   }
 
-  // Обновление информации в запущенном workflow
+  // Обновление профиля в запущенном workflow
   // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
-  rpc Update(UpdateOrderRequest) returns (Order) {
+  rpc Update(UpdateRequest) returns (Profile) {
     option (temporal.v1.update) = {};
   }
 
-  // Удаление workflow. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+  // Удаление профиля. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
   // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
   rpc Delete(google.protobuf.Empty) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = {};
   }
 }
 
-message CreateOrderRequest {
-  string id = 1;
-  string customerId = 2;
-  string address = 3;
-  repeated Product products = 4;
-}
+message CreateRequest {
+  string name = 1;
+  string phone = 2;
+};
 
-message Product {
+message Profile {
   string id = 1;
   string name = 2;
-  int32 qty = 3;
-  int32 price = 4;
-}
+  string phone = 3;
+};
 
-message UpdateOrderRequest {
-  string address = 1;
-  repeated Product products = 2;
-}
-
-message Order {
-  string id = 1;
-  string customerId = 2;
-  string address = 3;
-  repeated Product products = 4;
-  int32 total = 5;
+message UpdateRequest {
+  string name = 1;
 }

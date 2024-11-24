@@ -14,11 +14,11 @@ import (
 
 func main() {
 	// Инициализируем Worker сразу из кодгена с помощью cli
-	app, err := temporal.NewOrderCli(
-		temporal.NewOrderCliOptions().WithWorker(
+	app, err := temporal.NewCustomerCli(
+		temporal.NewCustomerCliOptions().WithWorker(
 			func(cmd *cli.Context, c client.Client) (worker.Worker, error) {
-				w := worker.New(c, temporal.OrderTaskQueue, worker.Options{})
-				temporal.RegisterCreateOrderWorkflow(w, tmc.Register)
+				w := worker.New(c, temporal.CustomerTaskQueue, worker.Options{})
+				temporal.RegisterCreateWorkflow(w, tmc.Register)
 				return w, nil
 			}),
 	)

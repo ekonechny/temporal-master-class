@@ -1,51 +1,38 @@
-### Создать заказ
-GRPC localhost:50051/server.Order/Create
+### Запустить жизненный цикл пользователя
+GRPC localhost:50051/server.Customer/Create
 
 {
-  "id": "da789e50-9be2-424e-b379-cd7aaa12eb75",
-  "address": "Улица Пушкина, дом Колотушкина",
-  "products": [{
-    "id": "111",
-    "name": "Молоко из-под Коровы",
-    "qty": 2,
-    "price": 70
-  }, {
-    "id": "222",
-    "name": "Печеньки, которыми тыкают в молоко",
-    "qty": 7,
-    "price": 90
-  }]
+  "name": "Джо Персиков",
+  "phone": "79650843636"
 }
 
-### Получить заказ
-GRPC localhost:50051/server.Order/Read
+> {%
+    client.test("Checkout executed successfully", function() {
+        client.assert(response.status === 207, `Status is ${response.status}`);
+        client.assert(response.body.hasOwnProperty("id"), "Response does not contain identifier");
+        client.assert(response.body.id.length > 0, "id is empty");
+        client.global.set("customerId", response.body.id);
+    });
+%}
+
+### Получить профиль
+GRPC localhost:50051/server.Customer/Read
 
 {
-  "id": "da789e50-9be2-424e-b379-cd7aaa12eb75"
+  "id": "{{ customerId }}"
 }
 
-### Обновить заказ
-GRPC localhost:50051/server.Order/Update
+### Обновить корзину
+GRPC localhost:50051/server.Customer/Update
 
 {
-  "id": "da789e50-9be2-424e-b379-cd7aaa12eb75",
-  "address": "Улица Пушкина, дом Колотушкина",
-  "products": [{
-    "id": "333",
-    "name": "Вкусный глазированный сырок из свежего молока",
-    "qty": 2,
-    "price": 85
-  }, {
-    "id": "222",
-    "name": "Печеньки, которыми тыкают в молоко",
-    "qty": 7,
-    "price": 90
-  }]
+  "id": "{{ customerId }}",
+  "name": "Джон Ананасов"
 }
 
-### Удалить заказ
-GRPC localhost:50051/server.Order/Delete
+### Удалить профиль
+GRPC localhost:50051/server.Customer/Delete
 
 {
-  "id": "orders/da789e50-9be2-424e-b379-cd7aaa12eb75"
+  "id": "{{ customerId }}"
 }

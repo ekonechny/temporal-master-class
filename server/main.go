@@ -21,12 +21,12 @@ var (
 )
 
 type srv struct {
-	server.OrderServer
-	tcl temporal.OrderClient
+	server.CustomerServer
+	tcl temporal.CustomerClient
 }
 
-func (s *srv) Create(ctx context.Context, in *temporal.CreateOrderRequest) (*temporal.Order, error) {
-	run, err := s.tcl.CreateOrderAsync(ctx, in)
+func (s *srv) Create(ctx context.Context, in *temporal.CreateRequest) (*temporal.Profile, error) {
+	run, err := s.tcl.CreateAsync(ctx, in)
 	if err != nil {
 		return nil, err
 	}
@@ -37,8 +37,8 @@ func (s *srv) Create(ctx context.Context, in *temporal.CreateOrderRequest) (*tem
 	return order, nil
 }
 
-func (s *srv) Read(ctx context.Context, in *server.ReadOrderRequest) (*temporal.Order, error) {
-	id, err := expression.EvalExpression(temporal.CreateOrderIdexpression, in.ProtoReflect())
+func (s *srv) Read(ctx context.Context, in *server.ReadRequest) (*temporal.Profile, error) {
+	id, err := expression.EvalExpression(temporal.CreateIdexpression, in.ProtoReflect())
 	if err != nil {
 		return nil, err
 	}
@@ -49,14 +49,13 @@ func (s *srv) Read(ctx context.Context, in *server.ReadOrderRequest) (*temporal.
 	return read, nil
 }
 
-func (s *srv) Update(ctx context.Context, in *server.UpdateOrderRequest) (*temporal.Order, error) {
-	id, err := expression.EvalExpression(temporal.CreateOrderIdexpression, in.ProtoReflect())
+func (s *srv) Update(ctx context.Context, in *server.UpdateRequest) (*temporal.Profile, error) {
+	id, err := expression.EvalExpression(temporal.CreateIdexpression, in.ProtoReflect())
 	if err != nil {
 		return nil, err
 	}
-	update, err := s.tcl.Update(ctx, id, "", &temporal.UpdateOrderRequest{
-		Address:  in.Address,
-		Products: in.Products,
+	update, err := s.tcl.Update(ctx, id, "", &temporal.UpdateRequest{
+		Name: in.Name,
 	})
 	if err != nil {
 		return nil, err
@@ -64,9 +63,12 @@ func (s *srv) Update(ctx context.Context, in *server.UpdateOrderRequest) (*tempo
 	return update, nil
 }
 
-func (s *srv) Delete(ctx context.Context, in *server.DeleteOrderRequest) (*emptypb.Empty, error) {
-	err := s.tcl.Delete(ctx, in.Id, "")
+func (s *srv) Delete(ctx context.Context, in *server.DeleteRequest) (*emptypb.Empty, error) {
+	id, err := expression.EvalExpression(temporal.CreateIdexpression, in.ProtoReflect())
 	if err != nil {
+		return nil, err
+	}
+	if err := s.tcl.Delete(ctx, id, ""); err != nil {
 		return nil, err
 	}
 	return nil, nil
@@ -83,9 +85,9 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to create client: %v", err)
 	}
-	tcl := temporal.NewOrderClient(c)
+	tcl := temporal.NewCustomerClient(c)
 	s := grpc.NewServer()
-	server.RegisterOrderServer(s, &srv{tcl: tcl})
+	server.RegisterCustomerServer(s, &srv{tcl: tcl})
 	log.Printf("server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)

@@ -35,44 +35,44 @@ import (
 	"time"
 )
 
-// OrderTaskQueue is the default task-queue for a order.order worker
-const OrderTaskQueue = "order-v1"
+// CustomerTaskQueue is the default task-queue for a temporal.Customer worker
+const CustomerTaskQueue = "root-v1"
 
-// order.order workflow names
+// temporal.Customer workflow names
 const (
-	CreateOrderWorkflowName = "order.order.CreateOrder"
+	CreateWorkflowName = "temporal.Customer.Create"
 )
 
-// order.order workflow id expressions
+// temporal.Customer workflow id expressions
 var (
-	CreateOrderIdexpression = expression.MustParseExpression("orders/${! id }")
+	CreateIdexpression = expression.MustParseExpression("customers/${! customerId.or(id.or(uuid_v4())) }")
 )
 
-// order.order query names
+// temporal.Customer query names
 const (
-	ReadQueryName = "order.order.Read"
+	ReadQueryName = "temporal.Customer.Read"
 )
 
-// order.order signal names
+// temporal.Customer signal names
 const (
-	DeleteSignalName = "order.order.Delete"
+	DeleteSignalName = "temporal.Customer.Delete"
 )
 
-// order.order update names
+// temporal.Customer update names
 const (
-	UpdateUpdateName = "order.order.Update"
+	UpdateUpdateName = "temporal.Customer.Update"
 )
 
-// OrderClient describes a client for a(n) order.order worker
-type OrderClient interface {
-	// Это основной workflow
-	CreateOrder(ctx context.Context, req *CreateOrderRequest, opts ...*CreateOrderOptions) error
+// CustomerClient describes a client for a(n) temporal.Customer worker
+type CustomerClient interface {
+	// Это основной workflow, представляющий жизненный цикл пользователя
+	Create(ctx context.Context, req *CreateRequest, opts ...*CreateOptions) error
 
-	// CreateOrderAsync starts a(n) order.order.CreateOrder workflow and returns a handle to the workflow run
-	CreateOrderAsync(ctx context.Context, req *CreateOrderRequest, opts ...*CreateOrderOptions) (CreateOrderRun, error)
+	// CreateAsync starts a(n) temporal.Customer.Create workflow and returns a handle to the workflow run
+	CreateAsync(ctx context.Context, req *CreateRequest, opts ...*CreateOptions) (CreateRun, error)
 
-	// GetCreateOrder retrieves a handle to an existing order.order.CreateOrder workflow execution
-	GetCreateOrder(ctx context.Context, workflowID string, runID string) CreateOrderRun
+	// GetCreate retrieves a handle to an existing temporal.Customer.Create workflow execution
+	GetCreate(ctx context.Context, workflowID string, runID string) CreateRun
 
 	// CancelWorkflow requests cancellation of an existing workflow execution
 	CancelWorkflow(ctx context.Context, workflowID string, runID string) error
@@ -80,76 +80,76 @@ type OrderClient interface {
 	// TerminateWorkflow an existing workflow execution
 	TerminateWorkflow(ctx context.Context, workflowID string, runID string, reason string, details ...interface{}) error
 
-	// Получение информации из запущенного workflow
+	// Получение профиля из запущенного workflow
 	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
-	Read(ctx context.Context, workflowID string, runID string) (*Order, error)
+	Read(ctx context.Context, workflowID string, runID string) (*Profile, error)
 
-	// Удаление workflow. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+	// Удаление профиля. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
 	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 	Delete(ctx context.Context, workflowID string, runID string) error
 
-	// Обновление информации в запущенном workflow
+	// Обновление профиля в запущенном workflow
 	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
-	Update(ctx context.Context, workflowID string, runID string, req *UpdateOrderRequest, opts ...*UpdateOptions) (*Order, error)
+	Update(ctx context.Context, workflowID string, runID string, req *UpdateRequest, opts ...*UpdateOptions) (*Profile, error)
 
-	// UpdateAsync starts a(n) order.order.Update update and returns a handle to the workflow update
-	UpdateAsync(ctx context.Context, workflowID string, runID string, req *UpdateOrderRequest, opts ...*UpdateOptions) (UpdateHandle, error)
+	// UpdateAsync starts a(n) temporal.Customer.Update update and returns a handle to the workflow update
+	UpdateAsync(ctx context.Context, workflowID string, runID string, req *UpdateRequest, opts ...*UpdateOptions) (UpdateHandle, error)
 
-	// GetUpdate retrieves a handle to an existing order.order.Update update
+	// GetUpdate retrieves a handle to an existing temporal.Customer.Update update
 	GetUpdate(ctx context.Context, req client.GetWorkflowUpdateHandleOptions) (UpdateHandle, error)
 }
 
-// orderClient implements a temporal client for a order.order service
-type orderClient struct {
+// customerClient implements a temporal client for a temporal.Customer service
+type customerClient struct {
 	client client.Client
 	log    *slog.Logger
 }
 
-// NewOrderClient initializes a new order.order client
-func NewOrderClient(c client.Client, options ...*orderClientOptions) OrderClient {
-	var cfg *orderClientOptions
+// NewCustomerClient initializes a new temporal.Customer client
+func NewCustomerClient(c client.Client, options ...*customerClientOptions) CustomerClient {
+	var cfg *customerClientOptions
 	if len(options) > 0 {
 		cfg = options[0]
 	} else {
-		cfg = NewOrderClientOptions()
+		cfg = NewCustomerClientOptions()
 	}
-	return &orderClient{
+	return &customerClient{
 		client: c,
 		log:    cfg.getLogger(),
 	}
 }
 
-// NewOrderClientWithOptions initializes a new Order client with the given options
-func NewOrderClientWithOptions(c client.Client, opts client.Options, options ...*orderClientOptions) (OrderClient, error) {
+// NewCustomerClientWithOptions initializes a new Customer client with the given options
+func NewCustomerClientWithOptions(c client.Client, opts client.Options, options ...*customerClientOptions) (CustomerClient, error) {
 	var err error
 	c, err = client.NewClientFromExisting(c, opts)
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client with options: %w", err)
 	}
-	var cfg *orderClientOptions
+	var cfg *customerClientOptions
 	if len(options) > 0 {
 		cfg = options[0]
 	} else {
-		cfg = NewOrderClientOptions()
+		cfg = NewCustomerClientOptions()
 	}
-	return &orderClient{
+	return &customerClient{
 		client: c,
 		log:    cfg.getLogger(),
 	}, nil
 }
 
-// orderClientOptions describes optional runtime configuration for a OrderClient
-type orderClientOptions struct {
+// customerClientOptions describes optional runtime configuration for a CustomerClient
+type customerClientOptions struct {
 	log *slog.Logger
 }
 
-// NewOrderClientOptions initializes a new orderClientOptions value
-func NewOrderClientOptions() *orderClientOptions {
-	return &orderClientOptions{}
+// NewCustomerClientOptions initializes a new customerClientOptions value
+func NewCustomerClientOptions() *customerClientOptions {
+	return &customerClientOptions{}
 }
 
 // WithLogger can be used to override the default logger
-func (opts *orderClientOptions) WithLogger(l *slog.Logger) *orderClientOptions {
+func (opts *customerClientOptions) WithLogger(l *slog.Logger) *customerClientOptions {
 	if l != nil {
 		opts.log = l
 	}
@@ -157,69 +157,69 @@ func (opts *orderClientOptions) WithLogger(l *slog.Logger) *orderClientOptions {
 }
 
 // getLogger returns the configured logger, or the default logger
-func (opts *orderClientOptions) getLogger() *slog.Logger {
+func (opts *customerClientOptions) getLogger() *slog.Logger {
 	if opts != nil && opts.log != nil {
 		return opts.log
 	}
 	return slog.Default()
 }
 
-// Это основной workflow
-func (c *orderClient) CreateOrder(ctx context.Context, req *CreateOrderRequest, options ...*CreateOrderOptions) error {
-	run, err := c.CreateOrderAsync(ctx, req, options...)
+// Это основной workflow, представляющий жизненный цикл пользователя
+func (c *customerClient) Create(ctx context.Context, req *CreateRequest, options ...*CreateOptions) error {
+	run, err := c.CreateAsync(ctx, req, options...)
 	if err != nil {
 		return err
 	}
 	return run.Get(ctx)
 }
 
-// Это основной workflow
-func (c *orderClient) CreateOrderAsync(ctx context.Context, req *CreateOrderRequest, options ...*CreateOrderOptions) (CreateOrderRun, error) {
-	var o *CreateOrderOptions
+// Это основной workflow, представляющий жизненный цикл пользователя
+func (c *customerClient) CreateAsync(ctx context.Context, req *CreateRequest, options ...*CreateOptions) (CreateRun, error) {
+	var o *CreateOptions
 	if len(options) > 0 && options[0] != nil {
 		o = options[0]
 	} else {
-		o = NewCreateOrderOptions()
+		o = NewCreateOptions()
 	}
 	opts, err := o.Build(req.ProtoReflect())
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
-	run, err := c.client.ExecuteWorkflow(ctx, opts, CreateOrderWorkflowName, req)
+	run, err := c.client.ExecuteWorkflow(ctx, opts, CreateWorkflowName, req)
 	if err != nil {
 		return nil, err
 	}
 	if run == nil {
 		return nil, errors.New("execute workflow returned nil run")
 	}
-	return &createOrderRun{
+	return &createRun{
 		client: c,
 		run:    run,
 	}, nil
 }
 
-// GetCreateOrder fetches an existing order.order.CreateOrder execution
-func (c *orderClient) GetCreateOrder(ctx context.Context, workflowID string, runID string) CreateOrderRun {
-	return &createOrderRun{
+// GetCreate fetches an existing temporal.Customer.Create execution
+func (c *customerClient) GetCreate(ctx context.Context, workflowID string, runID string) CreateRun {
+	return &createRun{
 		client: c,
 		run:    c.client.GetWorkflow(ctx, workflowID, runID),
 	}
 }
 
 // CancelWorkflow requests cancellation of an existing workflow execution
-func (c *orderClient) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
+func (c *customerClient) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
 	return c.client.CancelWorkflow(ctx, workflowID, runID)
 }
 
 // TerminateWorkflow terminates an existing workflow execution
-func (c *orderClient) TerminateWorkflow(ctx context.Context, workflowID string, runID string, reason string, details ...interface{}) error {
+func (c *customerClient) TerminateWorkflow(ctx context.Context, workflowID string, runID string, reason string, details ...interface{}) error {
 	return c.client.TerminateWorkflow(ctx, workflowID, runID, reason, details...)
 }
 
-// Получение информации из запущенного workflow
+// Получение профиля из запущенного workflow
 // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
-func (c *orderClient) Read(ctx context.Context, workflowID string, runID string) (*Order, error) {
-	var resp Order
+func (c *customerClient) Read(ctx context.Context, workflowID string, runID string) (*Profile, error) {
+	var resp Profile
 	if val, err := c.client.QueryWorkflow(ctx, workflowID, runID, ReadQueryName); err != nil {
 		return nil, err
 	} else if err = val.Get(&resp); err != nil {
@@ -228,15 +228,15 @@ func (c *orderClient) Read(ctx context.Context, workflowID string, runID string)
 	return &resp, nil
 }
 
-// Удаление workflow. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+// Удаление профиля. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
 // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
-func (c *orderClient) Delete(ctx context.Context, workflowID string, runID string) error {
+func (c *customerClient) Delete(ctx context.Context, workflowID string, runID string) error {
 	return c.client.SignalWorkflow(ctx, workflowID, runID, DeleteSignalName, nil)
 }
 
-// Обновление информации в запущенном workflow
+// Обновление профиля в запущенном workflow
 // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
-func (c *orderClient) Update(ctx context.Context, workflowID string, runID string, req *UpdateOrderRequest, opts ...*UpdateOptions) (*Order, error) {
+func (c *customerClient) Update(ctx context.Context, workflowID string, runID string, req *UpdateRequest, opts ...*UpdateOptions) (*Profile, error) {
 	// initialize update options
 	o := NewUpdateOptions()
 	if len(opts) > 0 && opts[0].Options != nil {
@@ -253,9 +253,9 @@ func (c *orderClient) Update(ctx context.Context, workflowID string, runID strin
 	return handle.Get(ctx)
 }
 
-// Обновление информации в запущенном workflow
+// Обновление профиля в запущенном workflow
 // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
-func (c *orderClient) UpdateAsync(ctx context.Context, workflowID string, runID string, req *UpdateOrderRequest, opts ...*UpdateOptions) (UpdateHandle, error) {
+func (c *customerClient) UpdateAsync(ctx context.Context, workflowID string, runID string, req *UpdateRequest, opts ...*UpdateOptions) (UpdateHandle, error) {
 	// initialize update options
 	var o *UpdateOptions
 	if len(opts) > 0 && opts[0] != nil {
@@ -278,16 +278,16 @@ func (c *orderClient) UpdateAsync(ctx context.Context, workflowID string, runID 
 	return &updateHandle{client: c, handle: handle}, nil
 }
 
-// GetUpdate retrieves a handle to an existing order.order.Update update
-func (c *orderClient) GetUpdate(ctx context.Context, req client.GetWorkflowUpdateHandleOptions) (UpdateHandle, error) {
+// GetUpdate retrieves a handle to an existing temporal.Customer.Update update
+func (c *customerClient) GetUpdate(ctx context.Context, req client.GetWorkflowUpdateHandleOptions) (UpdateHandle, error) {
 	return &updateHandle{
 		client: c,
 		handle: c.client.GetWorkflowUpdateHandle(req),
 	}, nil
 }
 
-// CreateOrderOptions provides configuration for a order.order.CreateOrder workflow operation
-type CreateOrderOptions struct {
+// CreateOptions provides configuration for a temporal.Customer.Create workflow operation
+type CreateOptions struct {
 	options          client.StartWorkflowOptions
 	executionTimeout *time.Duration
 	id               *string
@@ -299,20 +299,20 @@ type CreateOrderOptions struct {
 	taskTimeout      *time.Duration
 }
 
-// NewCreateOrderOptions initializes a new CreateOrderOptions value
-func NewCreateOrderOptions() *CreateOrderOptions {
-	return &CreateOrderOptions{}
+// NewCreateOptions initializes a new CreateOptions value
+func NewCreateOptions() *CreateOptions {
+	return &CreateOptions{}
 }
 
 // Build initializes a new go.temporal.io/sdk/client.StartWorkflowOptions value with defaults and overrides applied
-func (o *CreateOrderOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
+func (o *CreateOptions) Build(req protoreflect.Message) (client.StartWorkflowOptions, error) {
 	opts := o.options
 	if v := o.id; v != nil {
 		opts.ID = *v
 	} else if opts.ID == "" {
-		id, err := expression.EvalExpression(CreateOrderIdexpression, req)
+		id, err := expression.EvalExpression(CreateIdexpression, req)
 		if err != nil {
-			return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", CreateOrderWorkflowName, err)
+			return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", CreateWorkflowName, err)
 		}
 		opts.ID = id
 	}
@@ -324,7 +324,7 @@ func (o *CreateOrderOptions) Build(req protoreflect.Message) (client.StartWorkfl
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = OrderTaskQueue
+		opts.TaskQueue = CustomerTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -345,61 +345,61 @@ func (o *CreateOrderOptions) Build(req protoreflect.Message) (client.StartWorkfl
 }
 
 // WithStartWorkflowOptions sets the initial go.temporal.io/sdk/client.StartWorkflowOptions
-func (o *CreateOrderOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *CreateOrderOptions {
+func (o *CreateOptions) WithStartWorkflowOptions(options client.StartWorkflowOptions) *CreateOptions {
 	o.options = options
 	return o
 }
 
 // WithExecutionTimeout sets the WorkflowExecutionTimeout value
-func (o *CreateOrderOptions) WithExecutionTimeout(d time.Duration) *CreateOrderOptions {
+func (o *CreateOptions) WithExecutionTimeout(d time.Duration) *CreateOptions {
 	o.executionTimeout = &d
 	return o
 }
 
 // WithID sets the ID value
-func (o *CreateOrderOptions) WithID(id string) *CreateOrderOptions {
+func (o *CreateOptions) WithID(id string) *CreateOptions {
 	o.id = &id
 	return o
 }
 
 // WithIDReusePolicy sets the WorkflowIDReusePolicy value
-func (o *CreateOrderOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *CreateOrderOptions {
+func (o *CreateOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *CreateOptions {
 	o.idReusePolicy = policy
 	return o
 }
 
 // WithRetryPolicy sets the RetryPolicy value
-func (o *CreateOrderOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *CreateOrderOptions {
+func (o *CreateOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *CreateOptions {
 	o.retryPolicy = policy
 	return o
 }
 
 // WithRunTimeout sets the WorkflowRunTimeout value
-func (o *CreateOrderOptions) WithRunTimeout(d time.Duration) *CreateOrderOptions {
+func (o *CreateOptions) WithRunTimeout(d time.Duration) *CreateOptions {
 	o.runTimeout = &d
 	return o
 }
 
 // WithSearchAttributes sets the SearchAttributes value
-func (o *CreateOrderOptions) WithSearchAttributes(sa map[string]any) *CreateOrderOptions {
+func (o *CreateOptions) WithSearchAttributes(sa map[string]any) *CreateOptions {
 	o.searchAttributes = sa
 	return o
 }
 
 // WithTaskTimeout sets the WorkflowTaskTimeout value
-func (o *CreateOrderOptions) WithTaskTimeout(d time.Duration) *CreateOrderOptions {
+func (o *CreateOptions) WithTaskTimeout(d time.Duration) *CreateOptions {
 	o.taskTimeout = &d
 	return o
 }
 
 // WithTaskQueue sets the TaskQueue value
-func (o *CreateOrderOptions) WithTaskQueue(tq string) *CreateOrderOptions {
+func (o *CreateOptions) WithTaskQueue(tq string) *CreateOptions {
 	o.taskQueue = &tq
 	return o
 }
 
-// CreateOrderRun describes a(n) order.order.CreateOrder workflow run
-type CreateOrderRun interface {
+// CreateRun describes a(n) temporal.Customer.Create workflow run
+type CreateRun interface {
 	// ID returns the workflow ID
 	ID() string
 
@@ -418,84 +418,84 @@ type CreateOrderRun interface {
 	// Terminate terminates a workflow in execution, returning an error if applicable
 	Terminate(ctx context.Context, reason string, details ...interface{}) error
 
-	// Получение информации из запущенного workflow
+	// Получение профиля из запущенного workflow
 	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
-	Read(ctx context.Context) (*Order, error)
+	Read(ctx context.Context) (*Profile, error)
 
-	// Удаление workflow. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+	// Удаление профиля. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
 	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 	Delete(ctx context.Context) error
 
-	// Обновление информации в запущенном workflow
+	// Обновление профиля в запущенном workflow
 	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
-	Update(ctx context.Context, req *UpdateOrderRequest, opts ...*UpdateOptions) (*Order, error)
+	Update(ctx context.Context, req *UpdateRequest, opts ...*UpdateOptions) (*Profile, error)
 
-	// Обновление информации в запущенном workflow
+	// Обновление профиля в запущенном workflow
 	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
-	UpdateAsync(ctx context.Context, req *UpdateOrderRequest, opts ...*UpdateOptions) (UpdateHandle, error)
+	UpdateAsync(ctx context.Context, req *UpdateRequest, opts ...*UpdateOptions) (UpdateHandle, error)
 }
 
-// createOrderRun provides an internal implementation of a(n) CreateOrderRunRun
-type createOrderRun struct {
-	client *orderClient
+// createRun provides an internal implementation of a(n) CreateRunRun
+type createRun struct {
+	client *customerClient
 	run    client.WorkflowRun
 }
 
 // ID returns the workflow ID
-func (r *createOrderRun) ID() string {
+func (r *createRun) ID() string {
 	return r.run.GetID()
 }
 
 // Run returns the inner client.WorkflowRun
-func (r *createOrderRun) Run() client.WorkflowRun {
+func (r *createRun) Run() client.WorkflowRun {
 	return r.run
 }
 
 // RunID returns the execution ID
-func (r *createOrderRun) RunID() string {
+func (r *createRun) RunID() string {
 	return r.run.GetRunID()
 }
 
 // Cancel requests cancellation of a workflow in execution, returning an error if applicable
-func (r *createOrderRun) Cancel(ctx context.Context) error {
+func (r *createRun) Cancel(ctx context.Context) error {
 	return r.client.CancelWorkflow(ctx, r.ID(), r.RunID())
 }
 
 // Get blocks until the workflow is complete, returning the result if applicable
-func (r *createOrderRun) Get(ctx context.Context) error {
+func (r *createRun) Get(ctx context.Context) error {
 	return r.run.Get(ctx, nil)
 }
 
 // Terminate terminates a workflow in execution, returning an error if applicable
-func (r *createOrderRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
+func (r *createRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
 	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
 }
 
-// Получение информации из запущенного workflow
+// Получение профиля из запущенного workflow
 // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
-func (r *createOrderRun) Read(ctx context.Context) (*Order, error) {
+func (r *createRun) Read(ctx context.Context) (*Profile, error) {
 	return r.client.Read(ctx, r.ID(), "")
 }
 
-// Удаление workflow. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+// Удаление профиля. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
 // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
-func (r *createOrderRun) Delete(ctx context.Context) error {
+func (r *createRun) Delete(ctx context.Context) error {
 	return r.client.Delete(ctx, r.ID(), "")
 }
 
-// Обновление информации в запущенном workflow
+// Обновление профиля в запущенном workflow
 // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
-func (r *createOrderRun) Update(ctx context.Context, req *UpdateOrderRequest, opts ...*UpdateOptions) (*Order, error) {
+func (r *createRun) Update(ctx context.Context, req *UpdateRequest, opts ...*UpdateOptions) (*Profile, error) {
 	return r.client.Update(ctx, r.ID(), r.RunID(), req, opts...)
 }
 
-// Обновление информации в запущенном workflow
+// Обновление профиля в запущенном workflow
 // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
-func (r *createOrderRun) UpdateAsync(ctx context.Context, req *UpdateOrderRequest, opts ...*UpdateOptions) (UpdateHandle, error) {
+func (r *createRun) UpdateAsync(ctx context.Context, req *UpdateRequest, opts ...*UpdateOptions) (UpdateHandle, error) {
 	return r.client.UpdateAsync(ctx, r.ID(), r.RunID(), req, opts...)
 }
 
-// UpdateHandle describes a(n) order.order.Update update handle
+// UpdateHandle describes a(n) temporal.Customer.Update update handle
 type UpdateHandle interface {
 	// WorkflowID returns the workflow ID
 	WorkflowID() string
@@ -504,12 +504,12 @@ type UpdateHandle interface {
 	// UpdateID returns the update ID
 	UpdateID() string
 	// Get blocks until the workflow is complete and returns the result
-	Get(ctx context.Context) (*Order, error)
+	Get(ctx context.Context) (*Profile, error)
 }
 
 // updateHandle provides an internal implementation of a(n) UpdateHandle
 type updateHandle struct {
-	client *orderClient
+	client *customerClient
 	handle client.WorkflowUpdateHandle
 }
 
@@ -529,8 +529,8 @@ func (h *updateHandle) UpdateID() string {
 }
 
 // Get blocks until the update wait policy is met, returning the result if applicable
-func (h *updateHandle) Get(ctx context.Context) (*Order, error) {
-	var resp Order
+func (h *updateHandle) Get(ctx context.Context) (*Profile, error) {
+	var resp Profile
 	var err error
 	doneCh := make(chan struct{})
 	gctx, cancel := context.WithCancel(context.Background())
@@ -558,7 +558,7 @@ func (h *updateHandle) Get(ctx context.Context) (*Order, error) {
 	}
 }
 
-// UpdateOptions provides configuration for a order.order.Update update operation
+// UpdateOptions provides configuration for a temporal.Customer.Update update operation
 type UpdateOptions struct {
 	Options    *client.UpdateWorkflowOptions
 	id         *string
@@ -571,7 +571,7 @@ func NewUpdateOptions() *UpdateOptions {
 }
 
 // Build initializes a new client.UpdateWorkflowOptions with defaults and overrides applied
-func (o *UpdateOptions) Build(workflowID string, runID string, req *UpdateOrderRequest) (opts *client.UpdateWorkflowOptions, err error) {
+func (o *UpdateOptions) Build(workflowID string, runID string, req *UpdateRequest) (opts *client.UpdateWorkflowOptions, err error) {
 	// use user-provided UpdateWorkflowOptions if exists
 	if o.Options != nil {
 		opts = o.Options
@@ -619,54 +619,54 @@ func (o *UpdateOptions) WithWaitPolicy(policy client.WorkflowUpdateStage) *Updat
 
 // Reference to generated workflow functions
 var (
-	// Это основной workflow
-	CreateOrderFunction func(workflow.Context, *CreateOrderRequest) error
+	// Это основной workflow, представляющий жизненный цикл пользователя
+	CreateFunction func(workflow.Context, *CreateRequest) error
 )
 
-// OrderWorkflowFunctions describes a mockable dependency for inlining workflows within other workflows
+// CustomerWorkflowFunctions describes a mockable dependency for inlining workflows within other workflows
 type (
-	// OrderWorkflowFunctions describes a mockable dependency for inlining workflows within other workflows
-	OrderWorkflowFunctions interface {
-		// Это основной workflow
-		CreateOrder(workflow.Context, *CreateOrderRequest) error
+	// CustomerWorkflowFunctions describes a mockable dependency for inlining workflows within other workflows
+	CustomerWorkflowFunctions interface {
+		// Это основной workflow, представляющий жизненный цикл пользователя
+		Create(workflow.Context, *CreateRequest) error
 	}
-	// orderWorkflowFunctions provides an internal OrderWorkflowFunctions implementation
-	orderWorkflowFunctions struct{}
+	// customerWorkflowFunctions provides an internal CustomerWorkflowFunctions implementation
+	customerWorkflowFunctions struct{}
 )
 
-func NewOrderWorkflowFunctions() OrderWorkflowFunctions {
-	return &orderWorkflowFunctions{}
+func NewCustomerWorkflowFunctions() CustomerWorkflowFunctions {
+	return &customerWorkflowFunctions{}
 }
 
-// Это основной workflow
-func (f *orderWorkflowFunctions) CreateOrder(ctx workflow.Context, req *CreateOrderRequest) error {
-	if CreateOrderFunction == nil {
-		return errors.New("CreateOrder requires workflow registration via RegisterOrderWorkflows or RegisterCreateOrderWorkflow")
+// Это основной workflow, представляющий жизненный цикл пользователя
+func (f *customerWorkflowFunctions) Create(ctx workflow.Context, req *CreateRequest) error {
+	if CreateFunction == nil {
+		return errors.New("Create requires workflow registration via RegisterCustomerWorkflows or RegisterCreateWorkflow")
 	}
-	return CreateOrderFunction(ctx, req)
+	return CreateFunction(ctx, req)
 }
 
-// OrderWorkflows provides methods for initializing new order.order workflow values
-type OrderWorkflows interface {
-	// Это основной workflow
-	CreateOrder(ctx workflow.Context, input *CreateOrderWorkflowInput) (CreateOrderWorkflow, error)
+// CustomerWorkflows provides methods for initializing new temporal.Customer workflow values
+type CustomerWorkflows interface {
+	// Это основной workflow, представляющий жизненный цикл пользователя
+	Create(ctx workflow.Context, input *CreateWorkflowInput) (CreateWorkflow, error)
 }
 
-// RegisterOrderWorkflows registers order.order workflows with the given worker
-func RegisterOrderWorkflows(r worker.WorkflowRegistry, workflows OrderWorkflows) {
-	RegisterCreateOrderWorkflow(r, workflows.CreateOrder)
+// RegisterCustomerWorkflows registers temporal.Customer workflows with the given worker
+func RegisterCustomerWorkflows(r worker.WorkflowRegistry, workflows CustomerWorkflows) {
+	RegisterCreateWorkflow(r, workflows.Create)
 }
 
-// RegisterCreateOrderWorkflow registers a order.order.CreateOrder workflow with the given worker
-func RegisterCreateOrderWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *CreateOrderWorkflowInput) (CreateOrderWorkflow, error)) {
-	CreateOrderFunction = buildCreateOrder(wf)
-	r.RegisterWorkflowWithOptions(CreateOrderFunction, workflow.RegisterOptions{Name: CreateOrderWorkflowName})
+// RegisterCreateWorkflow registers a temporal.Customer.Create workflow with the given worker
+func RegisterCreateWorkflow(r worker.WorkflowRegistry, wf func(workflow.Context, *CreateWorkflowInput) (CreateWorkflow, error)) {
+	CreateFunction = buildCreate(wf)
+	r.RegisterWorkflowWithOptions(CreateFunction, workflow.RegisterOptions{Name: CreateWorkflowName})
 }
 
-// buildCreateOrder converts a CreateOrder workflow struct into a valid workflow function
-func buildCreateOrder(ctor func(workflow.Context, *CreateOrderWorkflowInput) (CreateOrderWorkflow, error)) func(workflow.Context, *CreateOrderRequest) error {
-	return func(ctx workflow.Context, req *CreateOrderRequest) error {
-		input := &CreateOrderWorkflowInput{
+// buildCreate converts a Create workflow struct into a valid workflow function
+func buildCreate(ctor func(workflow.Context, *CreateWorkflowInput) (CreateWorkflow, error)) func(workflow.Context, *CreateRequest) error {
+	return func(ctx workflow.Context, req *CreateRequest) error {
+		input := &CreateWorkflowInput{
 			Req: req,
 			Delete: &DeleteSignal{
 				Channel: workflow.GetSignalChannel(ctx, DeleteSignalName),
@@ -694,55 +694,55 @@ func buildCreateOrder(ctor func(workflow.Context, *CreateOrderWorkflowInput) (Cr
 	}
 }
 
-// CreateOrderWorkflowInput describes the input to a(n) order.order.CreateOrder workflow constructor
-type CreateOrderWorkflowInput struct {
-	Req    *CreateOrderRequest
+// CreateWorkflowInput describes the input to a(n) temporal.Customer.Create workflow constructor
+type CreateWorkflowInput struct {
+	Req    *CreateRequest
 	Delete *DeleteSignal
 }
 
-// Это основной workflow
+// Это основной workflow, представляющий жизненный цикл пользователя
 //
-// workflow details: (name: "order.order.CreateOrder", id: "orders/${! id }")
-type CreateOrderWorkflow interface {
-	// Execute defines the entrypoint to a(n) order.order.CreateOrder workflow
+// workflow details: (name: "temporal.Customer.Create", id: "customers/${! customerId.or(id.or(uuid_v4())) }")
+type CreateWorkflow interface {
+	// Execute defines the entrypoint to a(n) temporal.Customer.Create workflow
 	Execute(ctx workflow.Context) error
 
-	// Получение информации из запущенного workflow
+	// Получение профиля из запущенного workflow
 	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
-	Read() (*Order, error)
+	Read() (*Profile, error)
 
-	// Обновление информации в запущенном workflow
+	// Обновление профиля в запущенном workflow
 	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
-	Update(workflow.Context, *UpdateOrderRequest) (*Order, error)
+	Update(workflow.Context, *UpdateRequest) (*Profile, error)
 }
 
-// Это основной workflow
-func CreateOrderChild(ctx workflow.Context, req *CreateOrderRequest, options ...*CreateOrderChildOptions) error {
-	childRun, err := CreateOrderChildAsync(ctx, req, options...)
+// Это основной workflow, представляющий жизненный цикл пользователя
+func CreateChild(ctx workflow.Context, req *CreateRequest, options ...*CreateChildOptions) error {
+	childRun, err := CreateChildAsync(ctx, req, options...)
 	if err != nil {
 		return err
 	}
 	return childRun.Get(ctx)
 }
 
-// Это основной workflow
-func CreateOrderChildAsync(ctx workflow.Context, req *CreateOrderRequest, options ...*CreateOrderChildOptions) (*CreateOrderChildRun, error) {
-	var o *CreateOrderChildOptions
+// Это основной workflow, представляющий жизненный цикл пользователя
+func CreateChildAsync(ctx workflow.Context, req *CreateRequest, options ...*CreateChildOptions) (*CreateChildRun, error) {
+	var o *CreateChildOptions
 	if len(options) > 0 && options[0] != nil {
 		o = options[0]
 	} else {
-		o = NewCreateOrderChildOptions()
+		o = NewCreateChildOptions()
 	}
 	opts, err := o.Build(ctx, req.ProtoReflect())
 	if err != nil {
 		return nil, fmt.Errorf("error initializing workflow.ChildWorkflowOptions: %w", err)
 	}
 	ctx = workflow.WithChildOptions(ctx, opts)
-	return &CreateOrderChildRun{Future: workflow.ExecuteChildWorkflow(ctx, CreateOrderWorkflowName, req)}, nil
+	return &CreateChildRun{Future: workflow.ExecuteChildWorkflow(ctx, CreateWorkflowName, req)}, nil
 }
 
-// CreateOrderChildOptions provides configuration for a child order.order.CreateOrder workflow operation
-type CreateOrderChildOptions struct {
+// CreateChildOptions provides configuration for a child temporal.Customer.Create workflow operation
+type CreateChildOptions struct {
 	options             workflow.ChildWorkflowOptions
 	executionTimeout    *time.Duration
 	id                  *string
@@ -756,13 +756,13 @@ type CreateOrderChildOptions struct {
 	waitForCancellation *bool
 }
 
-// NewCreateOrderChildOptions initializes a new CreateOrderChildOptions value
-func NewCreateOrderChildOptions() *CreateOrderChildOptions {
-	return &CreateOrderChildOptions{}
+// NewCreateChildOptions initializes a new CreateChildOptions value
+func NewCreateChildOptions() *CreateChildOptions {
+	return &CreateChildOptions{}
 }
 
 // Build initializes a new go.temporal.io/sdk/workflow.ChildWorkflowOptions value with defaults and overrides applied
-func (o *CreateOrderChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
+func (o *CreateChildOptions) Build(ctx workflow.Context, req protoreflect.Message) (workflow.ChildWorkflowOptions, error) {
 	opts := o.options
 	if v := o.id; v != nil {
 		opts.WorkflowID = *v
@@ -773,18 +773,18 @@ func (o *CreateOrderChildOptions) Build(ctx workflow.Context, req protoreflect.M
 			lao := workflow.GetLocalActivityOptions(ctx)
 			lao.ScheduleToCloseTimeout = time.Second * 10
 			if err := workflow.ExecuteLocalActivity(workflow.WithLocalActivityOptions(ctx, lao), func(ctx context.Context) (string, error) {
-				id, err := expression.EvalExpression(CreateOrderIdexpression, req)
+				id, err := expression.EvalExpression(CreateIdexpression, req)
 				if err != nil {
-					return "", fmt.Errorf("error evaluating id expression for %q workflow: %w", CreateOrderWorkflowName, err)
+					return "", fmt.Errorf("error evaluating id expression for %q workflow: %w", CreateWorkflowName, err)
 				}
 				return id, nil
 			}).Get(ctx, &opts.WorkflowID); err != nil {
-				return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", CreateOrderWorkflowName, err)
+				return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", CreateWorkflowName, err)
 			}
 		} else {
-			id, err := expression.EvalExpression(CreateOrderIdexpression, req)
+			id, err := expression.EvalExpression(CreateIdexpression, req)
 			if err != nil {
-				return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", CreateOrderWorkflowName, err)
+				return opts, fmt.Errorf("error evaluating id expression for %q workflow: %w", CreateWorkflowName, err)
 			}
 			opts.WorkflowID = id
 		}
@@ -797,7 +797,7 @@ func (o *CreateOrderChildOptions) Build(ctx workflow.Context, req protoreflect.M
 	if v := o.taskQueue; v != nil {
 		opts.TaskQueue = *v
 	} else if opts.TaskQueue == "" {
-		opts.TaskQueue = OrderTaskQueue
+		opts.TaskQueue = CustomerTaskQueue
 	}
 	if v := o.retryPolicy; v != nil {
 		opts.RetryPolicy = v
@@ -824,78 +824,78 @@ func (o *CreateOrderChildOptions) Build(ctx workflow.Context, req protoreflect.M
 }
 
 // WithChildWorkflowOptions sets the initial go.temporal.io/sdk/workflow.ChildWorkflowOptions
-func (o *CreateOrderChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *CreateOrderChildOptions {
+func (o *CreateChildOptions) WithChildWorkflowOptions(options workflow.ChildWorkflowOptions) *CreateChildOptions {
 	o.options = options
 	return o
 }
 
 // WithExecutionTimeout sets the WorkflowExecutionTimeout value
-func (o *CreateOrderChildOptions) WithExecutionTimeout(d time.Duration) *CreateOrderChildOptions {
+func (o *CreateChildOptions) WithExecutionTimeout(d time.Duration) *CreateChildOptions {
 	o.executionTimeout = &d
 	return o
 }
 
 // WithID sets the WorkflowID value
-func (o *CreateOrderChildOptions) WithID(id string) *CreateOrderChildOptions {
+func (o *CreateChildOptions) WithID(id string) *CreateChildOptions {
 	o.id = &id
 	return o
 }
 
 // WithIDReusePolicy sets the WorkflowIDReusePolicy value
-func (o *CreateOrderChildOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *CreateOrderChildOptions {
+func (o *CreateChildOptions) WithIDReusePolicy(policy enumsv1.WorkflowIdReusePolicy) *CreateChildOptions {
 	o.idReusePolicy = policy
 	return o
 }
 
 // WithParentClosePolicy sets the WorkflowIDReusePolicy value
-func (o *CreateOrderChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *CreateOrderChildOptions {
+func (o *CreateChildOptions) WithParentClosePolicy(policy enumsv1.ParentClosePolicy) *CreateChildOptions {
 	o.parentClosePolicy = policy
 	return o
 }
 
 // WithRetryPolicy sets the RetryPolicy value
-func (o *CreateOrderChildOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *CreateOrderChildOptions {
+func (o *CreateChildOptions) WithRetryPolicy(policy *temporal.RetryPolicy) *CreateChildOptions {
 	o.retryPolicy = policy
 	return o
 }
 
 // WithRunTimeout sets the WorkflowRunTimeout value
-func (o *CreateOrderChildOptions) WithRunTimeout(d time.Duration) *CreateOrderChildOptions {
+func (o *CreateChildOptions) WithRunTimeout(d time.Duration) *CreateChildOptions {
 	o.runTimeout = &d
 	return o
 }
 
 // WithSearchAttributes sets the SearchAttributes value
-func (o *CreateOrderChildOptions) WithSearchAttributes(sa map[string]any) *CreateOrderChildOptions {
+func (o *CreateChildOptions) WithSearchAttributes(sa map[string]any) *CreateChildOptions {
 	o.searchAttributes = sa
 	return o
 }
 
 // WithTaskTimeout sets the WorkflowTaskTimeout value
-func (o *CreateOrderChildOptions) WithTaskTimeout(d time.Duration) *CreateOrderChildOptions {
+func (o *CreateChildOptions) WithTaskTimeout(d time.Duration) *CreateChildOptions {
 	o.taskTimeout = &d
 	return o
 }
 
 // WithTaskQueue sets the TaskQueue value
-func (o *CreateOrderChildOptions) WithTaskQueue(tq string) *CreateOrderChildOptions {
+func (o *CreateChildOptions) WithTaskQueue(tq string) *CreateChildOptions {
 	o.taskQueue = &tq
 	return o
 }
 
 // WithWaitForCancellation sets the WaitForCancellation value
-func (o *CreateOrderChildOptions) WithWaitForCancellation(wait bool) *CreateOrderChildOptions {
+func (o *CreateChildOptions) WithWaitForCancellation(wait bool) *CreateChildOptions {
 	o.waitForCancellation = &wait
 	return o
 }
 
-// CreateOrderChildRun describes a child CreateOrder workflow run
-type CreateOrderChildRun struct {
+// CreateChildRun describes a child Create workflow run
+type CreateChildRun struct {
 	Future workflow.ChildWorkflowFuture
 }
 
 // Get blocks until the workflow is completed, returning the response value
-func (r *CreateOrderChildRun) Get(ctx workflow.Context) error {
+func (r *CreateChildRun) Get(ctx workflow.Context) error {
 	if err := r.Future.Get(ctx, nil); err != nil {
 		return err
 	}
@@ -903,7 +903,7 @@ func (r *CreateOrderChildRun) Get(ctx workflow.Context) error {
 }
 
 // Select adds this completion to the selector. Callback can be nil.
-func (r *CreateOrderChildRun) Select(sel workflow.Selector, fn func(*CreateOrderChildRun)) workflow.Selector {
+func (r *CreateChildRun) Select(sel workflow.Selector, fn func(*CreateChildRun)) workflow.Selector {
 	return sel.AddFuture(r.Future, func(workflow.Future) {
 		if fn != nil {
 			fn(r)
@@ -912,7 +912,7 @@ func (r *CreateOrderChildRun) Select(sel workflow.Selector, fn func(*CreateOrder
 }
 
 // SelectStart adds waiting for start to the selector. Callback can be nil.
-func (r *CreateOrderChildRun) SelectStart(sel workflow.Selector, fn func(*CreateOrderChildRun)) workflow.Selector {
+func (r *CreateChildRun) SelectStart(sel workflow.Selector, fn func(*CreateChildRun)) workflow.Selector {
 	return sel.AddFuture(r.Future.GetChildWorkflowExecution(), func(workflow.Future) {
 		if fn != nil {
 			fn(r)
@@ -921,7 +921,7 @@ func (r *CreateOrderChildRun) SelectStart(sel workflow.Selector, fn func(*Create
 }
 
 // WaitStart waits for the child workflow to start
-func (r *CreateOrderChildRun) WaitStart(ctx workflow.Context) (*workflow.Execution, error) {
+func (r *CreateChildRun) WaitStart(ctx workflow.Context) (*workflow.Execution, error) {
 	var exec workflow.Execution
 	if err := r.Future.GetChildWorkflowExecution().Get(ctx, &exec); err != nil {
 		return nil, err
@@ -929,38 +929,38 @@ func (r *CreateOrderChildRun) WaitStart(ctx workflow.Context) (*workflow.Executi
 	return &exec, nil
 }
 
-// Delete sends a(n) "order.order.Delete" signal request to the child workflow
-func (r *CreateOrderChildRun) Delete(ctx workflow.Context) error {
+// Delete sends a(n) "temporal.Customer.Delete" signal request to the child workflow
+func (r *CreateChildRun) Delete(ctx workflow.Context) error {
 	return r.DeleteAsync(ctx).Get(ctx, nil)
 }
 
-// DeleteAsync sends a(n) "order.order.Delete" signal request to the child workflow
-func (r *CreateOrderChildRun) DeleteAsync(ctx workflow.Context) workflow.Future {
+// DeleteAsync sends a(n) "temporal.Customer.Delete" signal request to the child workflow
+func (r *CreateChildRun) DeleteAsync(ctx workflow.Context) workflow.Future {
 	return r.Future.SignalChildWorkflow(ctx, DeleteSignalName, nil)
 }
 
-// DeleteSignal describes a(n) order.order.Delete signal
+// DeleteSignal describes a(n) temporal.Customer.Delete signal
 type DeleteSignal struct {
 	Channel workflow.ReceiveChannel
 }
 
-// NewDeleteSignal initializes a new order.order.Delete signal wrapper
+// NewDeleteSignal initializes a new temporal.Customer.Delete signal wrapper
 func NewDeleteSignal(ctx workflow.Context) *DeleteSignal {
 	return &DeleteSignal{Channel: workflow.GetSignalChannel(ctx, DeleteSignalName)}
 }
 
-// Receive blocks until a(n) order.order.Delete signal is received
+// Receive blocks until a(n) temporal.Customer.Delete signal is received
 func (s *DeleteSignal) Receive(ctx workflow.Context) bool {
 	more := s.Channel.Receive(ctx, nil)
 	return more
 }
 
-// ReceiveAsync checks for a order.order.Delete signal without blocking
+// ReceiveAsync checks for a temporal.Customer.Delete signal without blocking
 func (s *DeleteSignal) ReceiveAsync() bool {
 	return s.Channel.ReceiveAsync(nil)
 }
 
-// ReceiveWithTimeout blocks until a(n) order.order.Delete signal is received or timeout expires.
+// ReceiveWithTimeout blocks until a(n) temporal.Customer.Delete signal is received or timeout expires.
 // Returns more value of false when Channel is closed.
 // Returns ok value of false when no value was found in the channel for the duration of timeout or the ctx was canceled.
 func (s *DeleteSignal) ReceiveWithTimeout(ctx workflow.Context, timeout time.Duration) (ok bool, more bool) {
@@ -970,7 +970,7 @@ func (s *DeleteSignal) ReceiveWithTimeout(ctx workflow.Context, timeout time.Dur
 	return
 }
 
-// Select checks for a(n) order.order.Delete signal without blocking
+// Select checks for a(n) temporal.Customer.Delete signal without blocking
 func (s *DeleteSignal) Select(sel workflow.Selector, fn func()) workflow.Selector {
 	return sel.AddReceive(s.Channel, func(workflow.ReceiveChannel, bool) {
 		s.ReceiveAsync()
@@ -980,92 +980,92 @@ func (s *DeleteSignal) Select(sel workflow.Selector, fn func()) workflow.Selecto
 	})
 }
 
-// Удаление workflow. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+// Удаление профиля. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
 // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 func DeleteExternal(ctx workflow.Context, workflowID string, runID string) error {
 	return DeleteExternalAsync(ctx, workflowID, runID).Get(ctx, nil)
 }
 
-// Удаление workflow. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
+// Удаление профиля. На самом деле это сигнал, который будет останавливать workflow с признаком отменен.
 // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 func DeleteExternalAsync(ctx workflow.Context, workflowID string, runID string) workflow.Future {
 	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, DeleteSignalName, nil)
 }
 
-// OrderActivities describes available worker activities
-type OrderActivities interface{}
+// CustomerActivities describes available worker activities
+type CustomerActivities interface{}
 
-// RegisterOrderActivities registers activities with a worker
-func RegisterOrderActivities(r worker.ActivityRegistry, activities OrderActivities) {}
+// RegisterCustomerActivities registers activities with a worker
+func RegisterCustomerActivities(r worker.ActivityRegistry, activities CustomerActivities) {}
 
 // TestClient provides a testsuite-compatible Client
-type TestOrderClient struct {
+type TestCustomerClient struct {
 	env       *testsuite.TestWorkflowEnvironment
-	workflows OrderWorkflows
+	workflows CustomerWorkflows
 }
 
-var _ OrderClient = &TestOrderClient{}
+var _ CustomerClient = &TestCustomerClient{}
 
-// NewTestOrderClient initializes a new TestOrderClient value
-func NewTestOrderClient(env *testsuite.TestWorkflowEnvironment, workflows OrderWorkflows, activities OrderActivities) *TestOrderClient {
+// NewTestCustomerClient initializes a new TestCustomerClient value
+func NewTestCustomerClient(env *testsuite.TestWorkflowEnvironment, workflows CustomerWorkflows, activities CustomerActivities) *TestCustomerClient {
 	if workflows != nil {
-		RegisterOrderWorkflows(env, workflows)
+		RegisterCustomerWorkflows(env, workflows)
 	}
 	if activities != nil {
-		RegisterOrderActivities(env, activities)
+		RegisterCustomerActivities(env, activities)
 	}
-	return &TestOrderClient{env, workflows}
+	return &TestCustomerClient{env, workflows}
 }
 
-// CreateOrder executes a(n) order.order.CreateOrder workflow in the test environment
-func (c *TestOrderClient) CreateOrder(ctx context.Context, req *CreateOrderRequest, opts ...*CreateOrderOptions) error {
-	run, err := c.CreateOrderAsync(ctx, req, opts...)
+// Create executes a(n) temporal.Customer.Create workflow in the test environment
+func (c *TestCustomerClient) Create(ctx context.Context, req *CreateRequest, opts ...*CreateOptions) error {
+	run, err := c.CreateAsync(ctx, req, opts...)
 	if err != nil {
 		return err
 	}
 	return run.Get(ctx)
 }
 
-// CreateOrderAsync executes a(n) order.order.CreateOrder workflow in the test environment
-func (c *TestOrderClient) CreateOrderAsync(ctx context.Context, req *CreateOrderRequest, options ...*CreateOrderOptions) (CreateOrderRun, error) {
-	var o *CreateOrderOptions
+// CreateAsync executes a(n) temporal.Customer.Create workflow in the test environment
+func (c *TestCustomerClient) CreateAsync(ctx context.Context, req *CreateRequest, options ...*CreateOptions) (CreateRun, error) {
+	var o *CreateOptions
 	if len(options) > 0 && options[0] != nil {
 		o = options[0]
 	} else {
-		o = NewCreateOrderOptions()
+		o = NewCreateOptions()
 	}
 	opts, err := o.Build(req.ProtoReflect())
 	if err != nil {
 		return nil, fmt.Errorf("error initializing client.StartWorkflowOptions: %w", err)
 	}
-	return &testCreateOrderRun{client: c, env: c.env, opts: &opts, req: req, workflows: c.workflows}, nil
+	return &testCreateRun{client: c, env: c.env, opts: &opts, req: req, workflows: c.workflows}, nil
 }
 
-// GetCreateOrder is a noop
-func (c *TestOrderClient) GetCreateOrder(ctx context.Context, workflowID string, runID string) CreateOrderRun {
-	return &testCreateOrderRun{env: c.env, workflows: c.workflows}
+// GetCreate is a noop
+func (c *TestCustomerClient) GetCreate(ctx context.Context, workflowID string, runID string) CreateRun {
+	return &testCreateRun{env: c.env, workflows: c.workflows}
 }
 
 // CancelWorkflow requests cancellation of an existing workflow execution
-func (c *TestOrderClient) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
+func (c *TestCustomerClient) CancelWorkflow(ctx context.Context, workflowID string, runID string) error {
 	c.env.CancelWorkflow()
 	return nil
 }
 
 // TerminateWorkflow terminates an existing workflow execution
-func (c *TestOrderClient) TerminateWorkflow(ctx context.Context, workflowID string, runID string, reason string, details ...interface{}) error {
+func (c *TestCustomerClient) TerminateWorkflow(ctx context.Context, workflowID string, runID string, reason string, details ...interface{}) error {
 	return c.CancelWorkflow(ctx, workflowID, runID)
 }
 
-// Read executes a order.order.Read query
-func (c *TestOrderClient) Read(ctx context.Context, workflowID string, runID string) (*Order, error) {
+// Read executes a temporal.Customer.Read query
+func (c *TestCustomerClient) Read(ctx context.Context, workflowID string, runID string) (*Profile, error) {
 	val, err := c.env.QueryWorkflow(ReadQueryName)
 	if err != nil {
 		return nil, err
 	} else if !val.HasValue() {
 		return nil, nil
 	} else {
-		var result Order
+		var result Profile
 		if err := val.Get(&result); err != nil {
 			return nil, err
 		}
@@ -1073,14 +1073,14 @@ func (c *TestOrderClient) Read(ctx context.Context, workflowID string, runID str
 	}
 }
 
-// Delete executes a order.order.Delete signal
-func (c *TestOrderClient) Delete(ctx context.Context, workflowID string, runID string) error {
+// Delete executes a temporal.Customer.Delete signal
+func (c *TestCustomerClient) Delete(ctx context.Context, workflowID string, runID string) error {
 	c.env.SignalWorkflow(DeleteSignalName, nil)
 	return nil
 }
 
-// Update executes a(n) order.order.Update update in the test environment
-func (c *TestOrderClient) Update(ctx context.Context, workflowID string, runID string, req *UpdateOrderRequest, opts ...*UpdateOptions) (*Order, error) {
+// Update executes a(n) temporal.Customer.Update update in the test environment
+func (c *TestCustomerClient) Update(ctx context.Context, workflowID string, runID string, req *UpdateRequest, opts ...*UpdateOptions) (*Profile, error) {
 	options := NewUpdateOptions()
 	if len(opts) > 0 && opts[0].Options != nil {
 		options = opts[0]
@@ -1093,8 +1093,8 @@ func (c *TestOrderClient) Update(ctx context.Context, workflowID string, runID s
 	return handle.Get(ctx)
 }
 
-// UpdateAsync executes a(n) order.order.Update update in the test environment
-func (c *TestOrderClient) UpdateAsync(ctx context.Context, workflowID string, runID string, req *UpdateOrderRequest, opts ...*UpdateOptions) (UpdateHandle, error) {
+// UpdateAsync executes a(n) temporal.Customer.Update update in the test environment
+func (c *TestCustomerClient) UpdateAsync(ctx context.Context, workflowID string, runID string, req *UpdateRequest, opts ...*UpdateOptions) (UpdateHandle, error) {
 	var o *UpdateOptions
 	if len(opts) > 0 && opts[0] != nil {
 		o = opts[0]
@@ -1117,8 +1117,8 @@ func (c *TestOrderClient) UpdateAsync(ctx context.Context, workflowID string, ru
 	}, nil
 }
 
-// GetUpdate retrieves a handle to an existing order.order.Update update
-func (c *TestOrderClient) GetUpdate(ctx context.Context, req client.GetWorkflowUpdateHandleOptions) (UpdateHandle, error) {
+// GetUpdate retrieves a handle to an existing temporal.Customer.Update update
+func (c *TestCustomerClient) GetUpdate(ctx context.Context, req client.GetWorkflowUpdateHandleOptions) (UpdateHandle, error) {
 	return nil, errors.New("unimplemented")
 }
 
@@ -1129,17 +1129,17 @@ type testUpdateHandle struct {
 	callbacks  *testutil.UpdateCallbacks
 	env        *testsuite.TestWorkflowEnvironment
 	opts       *client.UpdateWorkflowOptions
-	req        *UpdateOrderRequest
+	req        *UpdateRequest
 	runID      string
 	workflowID string
 }
 
-// Get retrieves a test order.order.Update update result
-func (h *testUpdateHandle) Get(ctx context.Context) (*Order, error) {
+// Get retrieves a test temporal.Customer.Update update result
+func (h *testUpdateHandle) Get(ctx context.Context) (*Profile, error) {
 	if resp, err := h.callbacks.Get(ctx); err != nil {
 		return nil, err
 	} else {
-		return resp.(*Order), nil
+		return resp.(*Profile), nil
 	}
 }
 
@@ -1161,25 +1161,25 @@ func (h *testUpdateHandle) WorkflowID() string {
 	return h.workflowID
 }
 
-var _ CreateOrderRun = &testCreateOrderRun{}
+var _ CreateRun = &testCreateRun{}
 
-// testCreateOrderRun provides convenience methods for interacting with a(n) order.order.CreateOrder workflow in the test environment
-type testCreateOrderRun struct {
-	client    *TestOrderClient
+// testCreateRun provides convenience methods for interacting with a(n) temporal.Customer.Create workflow in the test environment
+type testCreateRun struct {
+	client    *TestCustomerClient
 	env       *testsuite.TestWorkflowEnvironment
 	opts      *client.StartWorkflowOptions
-	req       *CreateOrderRequest
-	workflows OrderWorkflows
+	req       *CreateRequest
+	workflows CustomerWorkflows
 }
 
 // Cancel requests cancellation of a workflow in execution, returning an error if applicable
-func (r *testCreateOrderRun) Cancel(ctx context.Context) error {
+func (r *testCreateRun) Cancel(ctx context.Context) error {
 	return r.client.CancelWorkflow(ctx, r.ID(), r.RunID())
 }
 
-// Get retrieves a test order.order.CreateOrder workflow result
-func (r *testCreateOrderRun) Get(context.Context) error {
-	r.env.ExecuteWorkflow(CreateOrderWorkflowName, r.req)
+// Get retrieves a test temporal.Customer.Create workflow result
+func (r *testCreateRun) Get(context.Context) error {
+	r.env.ExecuteWorkflow(CreateWorkflowName, r.req)
 	if !r.env.IsWorkflowCompleted() {
 		return errors.New("workflow in progress")
 	}
@@ -1189,8 +1189,8 @@ func (r *testCreateOrderRun) Get(context.Context) error {
 	return nil
 }
 
-// ID returns a test order.order.CreateOrder workflow run's workflow ID
-func (r *testCreateOrderRun) ID() string {
+// ID returns a test temporal.Customer.Create workflow run's workflow ID
+func (r *testCreateRun) ID() string {
 	if r.opts != nil {
 		return r.opts.ID
 	}
@@ -1198,104 +1198,104 @@ func (r *testCreateOrderRun) ID() string {
 }
 
 // Run noop implementation
-func (r *testCreateOrderRun) Run() client.WorkflowRun {
+func (r *testCreateRun) Run() client.WorkflowRun {
 	return nil
 }
 
 // RunID noop implementation
-func (r *testCreateOrderRun) RunID() string {
+func (r *testCreateRun) RunID() string {
 	return ""
 }
 
 // Terminate terminates a workflow in execution, returning an error if applicable
-func (r *testCreateOrderRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
+func (r *testCreateRun) Terminate(ctx context.Context, reason string, details ...interface{}) error {
 	return r.client.TerminateWorkflow(ctx, r.ID(), r.RunID(), reason, details...)
 }
 
-// Read executes a order.order.Read query against a test order.order.CreateOrder workflow
-func (r *testCreateOrderRun) Read(ctx context.Context) (*Order, error) {
+// Read executes a temporal.Customer.Read query against a test temporal.Customer.Create workflow
+func (r *testCreateRun) Read(ctx context.Context) (*Profile, error) {
 	return r.client.Read(ctx, r.ID(), r.RunID())
 }
 
-// Delete executes a order.order.Delete signal against a test order.order.CreateOrder workflow
-func (r *testCreateOrderRun) Delete(ctx context.Context) error {
+// Delete executes a temporal.Customer.Delete signal against a test temporal.Customer.Create workflow
+func (r *testCreateRun) Delete(ctx context.Context) error {
 	return r.client.Delete(ctx, r.ID(), r.RunID())
 }
 
-// Update executes a(n) order.order.Update update against a test order.order.CreateOrder workflow
-func (r *testCreateOrderRun) Update(ctx context.Context, req *UpdateOrderRequest, opts ...*UpdateOptions) (*Order, error) {
+// Update executes a(n) temporal.Customer.Update update against a test temporal.Customer.Create workflow
+func (r *testCreateRun) Update(ctx context.Context, req *UpdateRequest, opts ...*UpdateOptions) (*Profile, error) {
 	return r.client.Update(ctx, r.ID(), r.RunID(), req, opts...)
 }
 
-// UpdateAsync executes a(n) order.order.Update update against a test order.order.CreateOrder workflow
-func (r *testCreateOrderRun) UpdateAsync(ctx context.Context, req *UpdateOrderRequest, opts ...*UpdateOptions) (UpdateHandle, error) {
+// UpdateAsync executes a(n) temporal.Customer.Update update against a test temporal.Customer.Create workflow
+func (r *testCreateRun) UpdateAsync(ctx context.Context, req *UpdateRequest, opts ...*UpdateOptions) (UpdateHandle, error) {
 	return r.client.UpdateAsync(ctx, r.ID(), r.RunID(), req, opts...)
 }
 
-// OrderCliOptions describes runtime configuration for order.order cli
-type OrderCliOptions struct {
+// CustomerCliOptions describes runtime configuration for temporal.Customer cli
+type CustomerCliOptions struct {
 	after            func(*v2.Context) error
 	before           func(*v2.Context) error
 	clientForCommand func(*v2.Context) (client.Client, error)
 	worker           func(*v2.Context, client.Client) (worker.Worker, error)
 }
 
-// NewOrderCliOptions initializes a new OrderCliOptions value
-func NewOrderCliOptions() *OrderCliOptions {
-	return &OrderCliOptions{}
+// NewCustomerCliOptions initializes a new CustomerCliOptions value
+func NewCustomerCliOptions() *CustomerCliOptions {
+	return &CustomerCliOptions{}
 }
 
 // WithAfter injects a custom After hook to be run after any command invocation
-func (opts *OrderCliOptions) WithAfter(fn func(*v2.Context) error) *OrderCliOptions {
+func (opts *CustomerCliOptions) WithAfter(fn func(*v2.Context) error) *CustomerCliOptions {
 	opts.after = fn
 	return opts
 }
 
 // WithBefore injects a custom Before hook to be run prior to any command invocation
-func (opts *OrderCliOptions) WithBefore(fn func(*v2.Context) error) *OrderCliOptions {
+func (opts *CustomerCliOptions) WithBefore(fn func(*v2.Context) error) *CustomerCliOptions {
 	opts.before = fn
 	return opts
 }
 
 // WithClient provides a Temporal client factory for use by commands
-func (opts *OrderCliOptions) WithClient(fn func(*v2.Context) (client.Client, error)) *OrderCliOptions {
+func (opts *CustomerCliOptions) WithClient(fn func(*v2.Context) (client.Client, error)) *CustomerCliOptions {
 	opts.clientForCommand = fn
 	return opts
 }
 
 // WithWorker provides an method for initializing a worker
-func (opts *OrderCliOptions) WithWorker(fn func(*v2.Context, client.Client) (worker.Worker, error)) *OrderCliOptions {
+func (opts *CustomerCliOptions) WithWorker(fn func(*v2.Context, client.Client) (worker.Worker, error)) *CustomerCliOptions {
 	opts.worker = fn
 	return opts
 }
 
-// NewOrderCli initializes a cli for a(n) order.order service
-func NewOrderCli(options ...*OrderCliOptions) (*v2.App, error) {
-	commands, err := newOrderCommands(options...)
+// NewCustomerCli initializes a cli for a(n) temporal.Customer service
+func NewCustomerCli(options ...*CustomerCliOptions) (*v2.App, error) {
+	commands, err := newCustomerCommands(options...)
 	if err != nil {
 		return nil, fmt.Errorf("error initializing subcommands: %w", err)
 	}
 	return &v2.App{
-		Name:     "order",
+		Name:     "customer",
 		Commands: commands,
 	}, nil
 }
 
-// NewOrderCliCommand initializes a cli command for a order.order service with subcommands for each query, signal, update, and workflow
-func NewOrderCliCommand(options ...*OrderCliOptions) (*v2.Command, error) {
-	subcommands, err := newOrderCommands(options...)
+// NewCustomerCliCommand initializes a cli command for a temporal.Customer service with subcommands for each query, signal, update, and workflow
+func NewCustomerCliCommand(options ...*CustomerCliOptions) (*v2.Command, error) {
+	subcommands, err := newCustomerCommands(options...)
 	if err != nil {
 		return nil, fmt.Errorf("error initializing subcommands: %w", err)
 	}
 	return &v2.Command{
-		Name:        "order",
+		Name:        "customer",
 		Subcommands: subcommands,
 	}, nil
 }
 
-// newOrderCommands initializes (sub)commands for a order.order cli or command
-func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
-	opts := &OrderCliOptions{}
+// newCustomerCommands initializes (sub)commands for a temporal.Customer cli or command
+func newCustomerCommands(options ...*CustomerCliOptions) ([]*v2.Command, error) {
+	opts := &CustomerCliOptions{}
 	if len(options) > 0 {
 		opts = options[0]
 	}
@@ -1307,7 +1307,7 @@ func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
 	commands := []*v2.Command{
 		{
 			Name:                   "read",
-			Usage:                  "Получение информации из запущенного workflow https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers",
+			Usage:                  "Получение профиля из запущенного workflow https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers",
 			Category:               "QUERIES",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -1331,7 +1331,7 @@ func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
 					return fmt.Errorf("error initializing client for command: %w", err)
 				}
 				defer c.Close()
-				client := NewOrderClient(c)
+				client := NewCustomerClient(c)
 				if resp, err := client.Read(cmd.Context, cmd.String("workflow-id"), cmd.String("run-id")); err != nil {
 					return fmt.Errorf("error executing %q query: %w", ReadQueryName, err)
 				} else {
@@ -1350,7 +1350,7 @@ func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
 		},
 		{
 			Name:                   "delete",
-			Usage:                  "Удаление workflow. На самом деле это сигнал, который будет останавливать workflow с признаком отменен. https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers",
+			Usage:                  "Удаление профиля. На самом деле это сигнал, который будет останавливать workflow с признаком отменен. https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers",
 			Category:               "SIGNALS",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -1374,7 +1374,7 @@ func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
 					return fmt.Errorf("error initializing client for command: %w", err)
 				}
 				defer c.Close()
-				client := NewOrderClient(c)
+				client := NewCustomerClient(c)
 				if err := client.Delete(cmd.Context, cmd.String("workflow-id"), cmd.String("run-id")); err != nil {
 					return fmt.Errorf("error sending %q signal: %w", DeleteSignalName, err)
 				}
@@ -1384,7 +1384,7 @@ func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
 		},
 		{
 			Name:                   "update",
-			Usage:                  "Обновление информации в запущенном workflow https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers",
+			Usage:                  "Обновление профиля в запущенном workflow https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers",
 			Category:               "UPDATES",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -1412,13 +1412,8 @@ func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"f"},
 				},
 				&v2.StringFlag{
-					Name:     "address",
-					Usage:    "set the value of the operation's \"Address\" parameter",
-					Category: "INPUT",
-				},
-				&v2.StringSliceFlag{
-					Name:     "products",
-					Usage:    "set the value of the operation's \"Products\" parameter (json-encoded: {id: <string>, name: <string>, qty: <int32>, price: <int32>})",
+					Name:     "name",
+					Usage:    "set the value of the operation's \"Name\" parameter",
 					Category: "INPUT",
 				},
 			},
@@ -1428,8 +1423,8 @@ func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
 					return fmt.Errorf("error initializing client for command: %w", err)
 				}
 				defer c.Close()
-				client := NewOrderClient(c)
-				req, err := UnmarshalCliFlagsToUpdateOrderRequest(cmd)
+				client := NewCustomerClient(c)
+				req, err := UnmarshalCliFlagsToUpdateRequest(cmd)
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1461,8 +1456,8 @@ func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
 			},
 		},
 		{
-			Name:                   "create-order",
-			Usage:                  "Это основной workflow",
+			Name:                   "create",
+			Usage:                  "Это основной workflow, представляющий жизненный цикл пользователя",
 			Category:               "WORKFLOWS",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -1478,7 +1473,7 @@ func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
 					Usage:   "task queue name",
 					Aliases: []string{"t"},
 					EnvVars: []string{"TEMPORAL_TASK_QUEUE_NAME", "TEMPORAL_TASK_QUEUE", "TASK_QUEUE_NAME", "TASK_QUEUE"},
-					Value:   "order-v1",
+					Value:   "root-v1",
 				},
 				&v2.StringFlag{
 					Name:    "input-file",
@@ -1486,23 +1481,13 @@ func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
 					Aliases: []string{"f"},
 				},
 				&v2.StringFlag{
-					Name:     "id",
-					Usage:    "set the value of the operation's \"Id\" parameter",
+					Name:     "name",
+					Usage:    "set the value of the operation's \"Name\" parameter",
 					Category: "INPUT",
 				},
 				&v2.StringFlag{
-					Name:     "customer-id",
-					Usage:    "set the value of the operation's \"CustomerId\" parameter",
-					Category: "INPUT",
-				},
-				&v2.StringFlag{
-					Name:     "address",
-					Usage:    "set the value of the operation's \"Address\" parameter",
-					Category: "INPUT",
-				},
-				&v2.StringSliceFlag{
-					Name:     "products",
-					Usage:    "set the value of the operation's \"Products\" parameter (json-encoded: {id: <string>, name: <string>, qty: <int32>, price: <int32>})",
+					Name:     "phone",
+					Usage:    "set the value of the operation's \"Phone\" parameter",
 					Category: "INPUT",
 				},
 			},
@@ -1512,8 +1497,8 @@ func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
 					return fmt.Errorf("error initializing client for command: %w", err)
 				}
 				defer tc.Close()
-				c := NewOrderClient(tc)
-				req, err := UnmarshalCliFlagsToCreateOrderRequest(cmd)
+				c := NewCustomerClient(tc)
+				req, err := UnmarshalCliFlagsToCreateRequest(cmd)
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
@@ -1521,9 +1506,9 @@ func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
 				if tq := cmd.String("task-queue"); tq != "" {
 					opts.TaskQueue = tq
 				}
-				run, err := c.CreateOrderAsync(cmd.Context, req, NewCreateOrderOptions().WithStartWorkflowOptions(opts))
+				run, err := c.CreateAsync(cmd.Context, req, NewCreateOptions().WithStartWorkflowOptions(opts))
 				if err != nil {
-					return fmt.Errorf("error starting %s workflow: %w", CreateOrderWorkflowName, err)
+					return fmt.Errorf("error starting %s workflow: %w", CreateWorkflowName, err)
 				}
 				if cmd.Bool("detach") {
 					fmt.Println("success")
@@ -1543,7 +1528,7 @@ func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
 		commands = append(commands, []*v2.Command{
 			{
 				Name:                   "worker",
-				Usage:                  "runs a order.order worker process",
+				Usage:                  "runs a temporal.Customer worker process",
 				UseShortOptionHandling: true,
 				Before:                 opts.before,
 				After:                  opts.after,
@@ -1575,9 +1560,9 @@ func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
 	return commands, nil
 }
 
-// UnmarshalCliFlagsToUpdateOrderRequest unmarshals a UpdateOrderRequest from command line flags
-func UnmarshalCliFlagsToUpdateOrderRequest(cmd *v2.Context) (*UpdateOrderRequest, error) {
-	var result UpdateOrderRequest
+// UnmarshalCliFlagsToUpdateRequest unmarshals a UpdateRequest from command line flags
+func UnmarshalCliFlagsToUpdateRequest(cmd *v2.Context) (*UpdateRequest, error) {
+	var result UpdateRequest
 	var hasValues bool
 	if cmd.IsSet("input-file") {
 		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
@@ -1593,17 +1578,9 @@ func UnmarshalCliFlagsToUpdateOrderRequest(cmd *v2.Context) (*UpdateOrderRequest
 		}
 		hasValues = true
 	}
-	if cmd.IsSet("address") {
+	if cmd.IsSet("name") {
 		hasValues = true
-		result.Address = cmd.String("address")
-	}
-	if cmd.IsSet("products") {
-		hasValues = true
-		var tmp UpdateOrderRequest
-		if err := protojson.Unmarshal([]byte(fmt.Sprintf("{\"products\":%s}", cmd.String("products"))), &tmp); err != nil {
-			return nil, fmt.Errorf("error unmarshalling \"products\" map flag: %w", err)
-		}
-		result.Products = tmp.Products
+		result.Name = cmd.String("name")
 	}
 	if !hasValues {
 		return nil, nil
@@ -1611,9 +1588,9 @@ func UnmarshalCliFlagsToUpdateOrderRequest(cmd *v2.Context) (*UpdateOrderRequest
 	return &result, nil
 }
 
-// UnmarshalCliFlagsToCreateOrderRequest unmarshals a CreateOrderRequest from command line flags
-func UnmarshalCliFlagsToCreateOrderRequest(cmd *v2.Context) (*CreateOrderRequest, error) {
-	var result CreateOrderRequest
+// UnmarshalCliFlagsToCreateRequest unmarshals a CreateRequest from command line flags
+func UnmarshalCliFlagsToCreateRequest(cmd *v2.Context) (*CreateRequest, error) {
+	var result CreateRequest
 	var hasValues bool
 	if cmd.IsSet("input-file") {
 		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
@@ -1629,25 +1606,13 @@ func UnmarshalCliFlagsToCreateOrderRequest(cmd *v2.Context) (*CreateOrderRequest
 		}
 		hasValues = true
 	}
-	if cmd.IsSet("id") {
+	if cmd.IsSet("name") {
 		hasValues = true
-		result.Id = cmd.String("id")
+		result.Name = cmd.String("name")
 	}
-	if cmd.IsSet("customer-id") {
+	if cmd.IsSet("phone") {
 		hasValues = true
-		result.CustomerId = cmd.String("customer-id")
-	}
-	if cmd.IsSet("address") {
-		hasValues = true
-		result.Address = cmd.String("address")
-	}
-	if cmd.IsSet("products") {
-		hasValues = true
-		var tmp CreateOrderRequest
-		if err := protojson.Unmarshal([]byte(fmt.Sprintf("{\"products\":%s}", cmd.String("products"))), &tmp); err != nil {
-			return nil, fmt.Errorf("error unmarshalling \"products\" map flag: %w", err)
-		}
-		result.Products = tmp.Products
+		result.Phone = cmd.String("phone")
 	}
 	if !hasValues {
 		return nil, nil

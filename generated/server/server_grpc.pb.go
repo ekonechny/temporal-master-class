@@ -21,215 +21,215 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Order_Create_FullMethodName = "/server.Order/Create"
-	Order_Read_FullMethodName   = "/server.Order/Read"
-	Order_Update_FullMethodName = "/server.Order/Update"
-	Order_Delete_FullMethodName = "/server.Order/Delete"
+	Customer_Create_FullMethodName = "/server.Customer/Create"
+	Customer_Read_FullMethodName   = "/server.Customer/Read"
+	Customer_Update_FullMethodName = "/server.Customer/Update"
+	Customer_Delete_FullMethodName = "/server.Customer/Delete"
 )
 
-// OrderClient is the client API for Order service.
+// CustomerClient is the client API for Customer service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type OrderClient interface {
-	Create(ctx context.Context, in *temporal.CreateOrderRequest, opts ...grpc.CallOption) (*temporal.Order, error)
-	Read(ctx context.Context, in *ReadOrderRequest, opts ...grpc.CallOption) (*temporal.Order, error)
-	Update(ctx context.Context, in *UpdateOrderRequest, opts ...grpc.CallOption) (*temporal.Order, error)
-	Delete(ctx context.Context, in *DeleteOrderRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+type CustomerClient interface {
+	Create(ctx context.Context, in *temporal.CreateRequest, opts ...grpc.CallOption) (*temporal.Profile, error)
+	Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*temporal.Profile, error)
+	Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*temporal.Profile, error)
+	Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
-type orderClient struct {
+type customerClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewOrderClient(cc grpc.ClientConnInterface) OrderClient {
-	return &orderClient{cc}
+func NewCustomerClient(cc grpc.ClientConnInterface) CustomerClient {
+	return &customerClient{cc}
 }
 
-func (c *orderClient) Create(ctx context.Context, in *temporal.CreateOrderRequest, opts ...grpc.CallOption) (*temporal.Order, error) {
+func (c *customerClient) Create(ctx context.Context, in *temporal.CreateRequest, opts ...grpc.CallOption) (*temporal.Profile, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(temporal.Order)
-	err := c.cc.Invoke(ctx, Order_Create_FullMethodName, in, out, cOpts...)
+	out := new(temporal.Profile)
+	err := c.cc.Invoke(ctx, Customer_Create_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *orderClient) Read(ctx context.Context, in *ReadOrderRequest, opts ...grpc.CallOption) (*temporal.Order, error) {
+func (c *customerClient) Read(ctx context.Context, in *ReadRequest, opts ...grpc.CallOption) (*temporal.Profile, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(temporal.Order)
-	err := c.cc.Invoke(ctx, Order_Read_FullMethodName, in, out, cOpts...)
+	out := new(temporal.Profile)
+	err := c.cc.Invoke(ctx, Customer_Read_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *orderClient) Update(ctx context.Context, in *UpdateOrderRequest, opts ...grpc.CallOption) (*temporal.Order, error) {
+func (c *customerClient) Update(ctx context.Context, in *UpdateRequest, opts ...grpc.CallOption) (*temporal.Profile, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(temporal.Order)
-	err := c.cc.Invoke(ctx, Order_Update_FullMethodName, in, out, cOpts...)
+	out := new(temporal.Profile)
+	err := c.cc.Invoke(ctx, Customer_Update_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *orderClient) Delete(ctx context.Context, in *DeleteOrderRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *customerClient) Delete(ctx context.Context, in *DeleteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, Order_Delete_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Customer_Delete_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// OrderServer is the server API for Order service.
-// All implementations must embed UnimplementedOrderServer
+// CustomerServer is the server API for Customer service.
+// All implementations must embed UnimplementedCustomerServer
 // for forward compatibility.
-type OrderServer interface {
-	Create(context.Context, *temporal.CreateOrderRequest) (*temporal.Order, error)
-	Read(context.Context, *ReadOrderRequest) (*temporal.Order, error)
-	Update(context.Context, *UpdateOrderRequest) (*temporal.Order, error)
-	Delete(context.Context, *DeleteOrderRequest) (*emptypb.Empty, error)
-	mustEmbedUnimplementedOrderServer()
+type CustomerServer interface {
+	Create(context.Context, *temporal.CreateRequest) (*temporal.Profile, error)
+	Read(context.Context, *ReadRequest) (*temporal.Profile, error)
+	Update(context.Context, *UpdateRequest) (*temporal.Profile, error)
+	Delete(context.Context, *DeleteRequest) (*emptypb.Empty, error)
+	mustEmbedUnimplementedCustomerServer()
 }
 
-// UnimplementedOrderServer must be embedded to have
+// UnimplementedCustomerServer must be embedded to have
 // forward compatible implementations.
 //
 // NOTE: this should be embedded by value instead of pointer to avoid a nil
 // pointer dereference when methods are called.
-type UnimplementedOrderServer struct{}
+type UnimplementedCustomerServer struct{}
 
-func (UnimplementedOrderServer) Create(context.Context, *temporal.CreateOrderRequest) (*temporal.Order, error) {
+func (UnimplementedCustomerServer) Create(context.Context, *temporal.CreateRequest) (*temporal.Profile, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Create not implemented")
 }
-func (UnimplementedOrderServer) Read(context.Context, *ReadOrderRequest) (*temporal.Order, error) {
+func (UnimplementedCustomerServer) Read(context.Context, *ReadRequest) (*temporal.Profile, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Read not implemented")
 }
-func (UnimplementedOrderServer) Update(context.Context, *UpdateOrderRequest) (*temporal.Order, error) {
+func (UnimplementedCustomerServer) Update(context.Context, *UpdateRequest) (*temporal.Profile, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Update not implemented")
 }
-func (UnimplementedOrderServer) Delete(context.Context, *DeleteOrderRequest) (*emptypb.Empty, error) {
+func (UnimplementedCustomerServer) Delete(context.Context, *DeleteRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Delete not implemented")
 }
-func (UnimplementedOrderServer) mustEmbedUnimplementedOrderServer() {}
-func (UnimplementedOrderServer) testEmbeddedByValue()               {}
+func (UnimplementedCustomerServer) mustEmbedUnimplementedCustomerServer() {}
+func (UnimplementedCustomerServer) testEmbeddedByValue()                  {}
 
-// UnsafeOrderServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to OrderServer will
+// UnsafeCustomerServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to CustomerServer will
 // result in compilation errors.
-type UnsafeOrderServer interface {
-	mustEmbedUnimplementedOrderServer()
+type UnsafeCustomerServer interface {
+	mustEmbedUnimplementedCustomerServer()
 }
 
-func RegisterOrderServer(s grpc.ServiceRegistrar, srv OrderServer) {
-	// If the following call pancis, it indicates UnimplementedOrderServer was
+func RegisterCustomerServer(s grpc.ServiceRegistrar, srv CustomerServer) {
+	// If the following call pancis, it indicates UnimplementedCustomerServer was
 	// embedded by pointer and is nil.  This will cause panics if an
 	// unimplemented method is ever invoked, so we test this at initialization
 	// time to prevent it from happening at runtime later due to I/O.
 	if t, ok := srv.(interface{ testEmbeddedByValue() }); ok {
 		t.testEmbeddedByValue()
 	}
-	s.RegisterService(&Order_ServiceDesc, srv)
+	s.RegisterService(&Customer_ServiceDesc, srv)
 }
 
-func _Order_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(temporal.CreateOrderRequest)
+func _Customer_Create_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(temporal.CreateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OrderServer).Create(ctx, in)
+		return srv.(CustomerServer).Create(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Order_Create_FullMethodName,
+		FullMethod: Customer_Create_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrderServer).Create(ctx, req.(*temporal.CreateOrderRequest))
+		return srv.(CustomerServer).Create(ctx, req.(*temporal.CreateRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Order_Read_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ReadOrderRequest)
+func _Customer_Read_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReadRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OrderServer).Read(ctx, in)
+		return srv.(CustomerServer).Read(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Order_Read_FullMethodName,
+		FullMethod: Customer_Read_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrderServer).Read(ctx, req.(*ReadOrderRequest))
+		return srv.(CustomerServer).Read(ctx, req.(*ReadRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Order_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateOrderRequest)
+func _Customer_Update_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OrderServer).Update(ctx, in)
+		return srv.(CustomerServer).Update(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Order_Update_FullMethodName,
+		FullMethod: Customer_Update_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrderServer).Update(ctx, req.(*UpdateOrderRequest))
+		return srv.(CustomerServer).Update(ctx, req.(*UpdateRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Order_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(DeleteOrderRequest)
+func _Customer_Delete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(OrderServer).Delete(ctx, in)
+		return srv.(CustomerServer).Delete(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Order_Delete_FullMethodName,
+		FullMethod: Customer_Delete_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(OrderServer).Delete(ctx, req.(*DeleteOrderRequest))
+		return srv.(CustomerServer).Delete(ctx, req.(*DeleteRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-// Order_ServiceDesc is the grpc.ServiceDesc for Order service.
+// Customer_ServiceDesc is the grpc.ServiceDesc for Customer service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var Order_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "server.Order",
-	HandlerType: (*OrderServer)(nil),
+var Customer_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "server.Customer",
+	HandlerType: (*CustomerServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "Create",
-			Handler:    _Order_Create_Handler,
+			Handler:    _Customer_Create_Handler,
 		},
 		{
 			MethodName: "Read",
-			Handler:    _Order_Read_Handler,
+			Handler:    _Customer_Read_Handler,
 		},
 		{
 			MethodName: "Update",
-			Handler:    _Order_Update_Handler,
+			Handler:    _Customer_Update_Handler,
 		},
 		{
 			MethodName: "Delete",
-			Handler:    _Order_Delete_Handler,
+			Handler:    _Customer_Delete_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
