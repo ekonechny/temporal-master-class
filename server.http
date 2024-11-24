@@ -63,5 +63,30 @@ GRPC localhost:50051/server.Customer/Checkout
         client.assert(response.status === 207, `Status is ${response.status}`);
         client.assert(response.body.hasOwnProperty("id"), "Response does not contain identifier");
         client.assert(response.body.id.length > 0, "id is empty");
+        client.global.set("orderId", response.body.id);
     });
 %}
+
+### Оплатить заказ
+GRPC localhost:50051/server.Customer/PaymentCallback
+
+{
+  "id": "{{ orderId }}",
+  "status": 1
+}
+
+### Потвердить заказа вендором
+GRPC localhost:50051/server.Customer/VendorOrderCallback
+
+{
+  "id": "{{ orderId }}",
+  "status": 1
+}
+
+### Передать заказ курьеру
+GRPC localhost:50051/server.Customer/VendorOrderCallback
+
+{
+  "id": "{{ orderId }}",
+  "status": 4
+}

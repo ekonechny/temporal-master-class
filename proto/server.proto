@@ -42,8 +42,11 @@ service Customer {
   // Создать заказ
   rpc Checkout(CheckoutRequest) returns (temporal.Order) {}
 
-  // Колбек для подтверждения вендором
-  rpc VendorOrderConfirm(VendorOrderConfirmRequest) returns (google.protobuf.Empty) {}
+  // Платежный колбек
+  rpc PaymentCallback(PaymentCallbackRequest) returns (google.protobuf.Empty) {}
+
+  // Колбек для апдейта от вендора
+  rpc VendorOrderCallback(VendorOrderCallbackRequest) returns (google.protobuf.Empty) {}
 }
 
 message NewCustomerRequest {
@@ -101,7 +104,12 @@ message CheckoutRequest {
   temporal.PaymentType paymentType = 2;
 }
 
-message VendorOrderConfirmRequest {
+message PaymentCallbackRequest {
+  string id = 1;
+  temporal.PaymentStatus status = 2;
+}
+
+message VendorOrderCallbackRequest {
   string id = 1;
   temporal.VendorOrderStatus status = 2;
 }
