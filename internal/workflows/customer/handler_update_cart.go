@@ -47,35 +47,6 @@ func (w *Workflow) UpdateCart(ctx workflow.Context, request *temporal.UpdateCart
 			Qty:   p.Qty,
 		})
 	}
-	//w.cart = &temporal.Cart{
-	//	Products: products,
-	//	Total:    calculateTotal(products),
-	//}
-
-	//w.cart = &temporal.Cart{
-	//	// Добавляем сюда генерацию UUID
-	//	Id:       uuid.NewString(),
-	//	Products: products,
-	//	Total:    calculateTotal(products),
-	//}
-
-	// Перезапускаем сервис видим другой uuid
-
-	// Добавляем через SideEffect
-	//encodedValue := workflow.SideEffect(ctx, func(ctx workflow.Context) interface{} {
-	//	return uuid.NewString()
-	//})
-	//w.cart = &temporal.Cart{
-	//	Products: products,
-	//	Total:    calculateTotal(products),
-	//}
-	//
-	//if err := encodedValue.Get(&w.cart.Id); err != nil {
-	//	return nil, err
-	//}
-
-	// Опачки
-	// wID customers/c527a4b1-10e0-4b0b-a555-8dd49f28055b RunID 81f1229f-a662-42b8-896f-af5d711d836b Attempt 1 Error [TMPRL1100] No cached result found for side effectID=1. KnownSideEffects=[] StackTrace coroutine temporal.Customer.UpdateCart [panic]:
 
 	w.cart = &temporal.Cart{
 		Products: products,

@@ -21,18 +21,19 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	Customer_NewCustomer_FullMethodName        = "/server.Customer/NewCustomer"
-	Customer_GetProfile_FullMethodName         = "/server.Customer/GetProfile"
-	Customer_UpdateProfile_FullMethodName      = "/server.Customer/UpdateProfile"
-	Customer_DeleteProfile_FullMethodName      = "/server.Customer/DeleteProfile"
-	Customer_SetAddress_FullMethodName         = "/server.Customer/SetAddress"
-	Customer_GetCart_FullMethodName            = "/server.Customer/GetCart"
-	Customer_UpdateCart_FullMethodName         = "/server.Customer/UpdateCart"
-	Customer_DeleteCart_FullMethodName         = "/server.Customer/DeleteCart"
-	Customer_GetOrder_FullMethodName           = "/server.Customer/GetOrder"
-	Customer_GetOrders_FullMethodName          = "/server.Customer/GetOrders"
-	Customer_Checkout_FullMethodName           = "/server.Customer/Checkout"
-	Customer_VendorOrderConfirm_FullMethodName = "/server.Customer/VendorOrderConfirm"
+	Customer_NewCustomer_FullMethodName         = "/server.Customer/NewCustomer"
+	Customer_GetProfile_FullMethodName          = "/server.Customer/GetProfile"
+	Customer_UpdateProfile_FullMethodName       = "/server.Customer/UpdateProfile"
+	Customer_DeleteProfile_FullMethodName       = "/server.Customer/DeleteProfile"
+	Customer_SetAddress_FullMethodName          = "/server.Customer/SetAddress"
+	Customer_GetCart_FullMethodName             = "/server.Customer/GetCart"
+	Customer_UpdateCart_FullMethodName          = "/server.Customer/UpdateCart"
+	Customer_DeleteCart_FullMethodName          = "/server.Customer/DeleteCart"
+	Customer_GetOrder_FullMethodName            = "/server.Customer/GetOrder"
+	Customer_GetOrders_FullMethodName           = "/server.Customer/GetOrders"
+	Customer_Checkout_FullMethodName            = "/server.Customer/Checkout"
+	Customer_PaymentCallback_FullMethodName     = "/server.Customer/PaymentCallback"
+	Customer_VendorOrderCallback_FullMethodName = "/server.Customer/VendorOrderCallback"
 )
 
 // CustomerClient is the client API for Customer service.
@@ -61,8 +62,10 @@ type CustomerClient interface {
 	GetOrders(ctx context.Context, in *GetOrdersRequest, opts ...grpc.CallOption) (*GetOrdersResponse, error)
 	// Создать заказ
 	Checkout(ctx context.Context, in *CheckoutRequest, opts ...grpc.CallOption) (*temporal.Order, error)
-	// Колбек для подтверждения вендором
-	VendorOrderConfirm(ctx context.Context, in *VendorOrderConfirmRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Платежный колбек
+	PaymentCallback(ctx context.Context, in *PaymentCallbackRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Колбек для апдейта от вендора
+	VendorOrderCallback(ctx context.Context, in *VendorOrderCallbackRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type customerClient struct {
@@ -183,10 +186,20 @@ func (c *customerClient) Checkout(ctx context.Context, in *CheckoutRequest, opts
 	return out, nil
 }
 
-func (c *customerClient) VendorOrderConfirm(ctx context.Context, in *VendorOrderConfirmRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+func (c *customerClient) PaymentCallback(ctx context.Context, in *PaymentCallbackRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, Customer_VendorOrderConfirm_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, Customer_PaymentCallback_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *customerClient) VendorOrderCallback(ctx context.Context, in *VendorOrderCallbackRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, Customer_VendorOrderCallback_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -219,8 +232,10 @@ type CustomerServer interface {
 	GetOrders(context.Context, *GetOrdersRequest) (*GetOrdersResponse, error)
 	// Создать заказ
 	Checkout(context.Context, *CheckoutRequest) (*temporal.Order, error)
-	// Колбек для подтверждения вендором
-	VendorOrderConfirm(context.Context, *VendorOrderConfirmRequest) (*emptypb.Empty, error)
+	// Платежный колбек
+	PaymentCallback(context.Context, *PaymentCallbackRequest) (*emptypb.Empty, error)
+	// Колбек для апдейта от вендора
+	VendorOrderCallback(context.Context, *VendorOrderCallbackRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedCustomerServer()
 }
 
@@ -264,8 +279,11 @@ func (UnimplementedCustomerServer) GetOrders(context.Context, *GetOrdersRequest)
 func (UnimplementedCustomerServer) Checkout(context.Context, *CheckoutRequest) (*temporal.Order, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Checkout not implemented")
 }
-func (UnimplementedCustomerServer) VendorOrderConfirm(context.Context, *VendorOrderConfirmRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method VendorOrderConfirm not implemented")
+func (UnimplementedCustomerServer) PaymentCallback(context.Context, *PaymentCallbackRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method PaymentCallback not implemented")
+}
+func (UnimplementedCustomerServer) VendorOrderCallback(context.Context, *VendorOrderCallbackRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VendorOrderCallback not implemented")
 }
 func (UnimplementedCustomerServer) mustEmbedUnimplementedCustomerServer() {}
 func (UnimplementedCustomerServer) testEmbeddedByValue()                  {}
@@ -486,20 +504,38 @@ func _Customer_Checkout_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
-func _Customer_VendorOrderConfirm_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(VendorOrderConfirmRequest)
+func _Customer_PaymentCallback_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PaymentCallbackRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(CustomerServer).VendorOrderConfirm(ctx, in)
+		return srv.(CustomerServer).PaymentCallback(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: Customer_VendorOrderConfirm_FullMethodName,
+		FullMethod: Customer_PaymentCallback_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(CustomerServer).VendorOrderConfirm(ctx, req.(*VendorOrderConfirmRequest))
+		return srv.(CustomerServer).PaymentCallback(ctx, req.(*PaymentCallbackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Customer_VendorOrderCallback_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VendorOrderCallbackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(CustomerServer).VendorOrderCallback(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: Customer_VendorOrderCallback_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(CustomerServer).VendorOrderCallback(ctx, req.(*VendorOrderCallbackRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -556,8 +592,12 @@ var Customer_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _Customer_Checkout_Handler,
 		},
 		{
-			MethodName: "VendorOrderConfirm",
-			Handler:    _Customer_VendorOrderConfirm_Handler,
+			MethodName: "PaymentCallback",
+			Handler:    _Customer_PaymentCallback_Handler,
+		},
+		{
+			MethodName: "VendorOrderCallback",
+			Handler:    _Customer_VendorOrderCallback_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

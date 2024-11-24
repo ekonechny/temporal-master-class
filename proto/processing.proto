@@ -21,7 +21,8 @@ service Processing {
       parent_close_policy: PARENT_CLOSE_POLICY_ABANDON
       query: { ref: "GetOrder" }
 
-      signal: { ref: 'VendorOrderConfirm' }
+      update: { ref: 'PaymentCallback' }
+      signal: { ref: 'VendorOrderCallback' }
     };
   }
 
@@ -56,9 +57,14 @@ service Processing {
     option (temporal.v1.query) = {};
   };
 
-  // Подтверждение заказа
-  rpc VendorOrderConfirm(VendorOrderConfirmRequest) returns (google.protobuf.Empty) {
+  // Колбек от вендора
+  rpc VendorOrderCallback(VendorOrderCallbackRequest) returns (google.protobuf.Empty) {
     option (temporal.v1.signal) = {};
+  };
+
+  // Колбек от платежной системы
+  rpc PaymentCallback(PaymentCallbackRequest) returns (google.protobuf.Empty) {
+    option (temporal.v1.update) = {};
   };
 }
 
@@ -94,6 +100,10 @@ message VendorOrderResponse {
   VendorOrderStatus status = 2;
 };
 
-message VendorOrderConfirmRequest {
+message PaymentCallbackRequest {
+  PaymentStatus status = 1;
+}
+
+message VendorOrderCallbackRequest {
   VendorOrderStatus status = 1;
 }

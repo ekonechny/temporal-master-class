@@ -1,6 +1,7 @@
 package processing
 
 import (
+	"errors"
 	"time"
 
 	t "go.temporal.io/sdk/temporal"
@@ -30,7 +31,8 @@ func Register(ctx workflow.Context, input *temporal.ProcessingFlowWorkflowInput)
 			PaymentType: input.Req.PaymentType,
 			CreatedAt:   utils.TimeToTimestamp(workflow.Now(ctx)),
 		},
-		confirm: input.VendorOrderConfirm,
+		confirm: input.VendorOrderCallback,
+		payment: workflow.NewChannel(ctx),
 	}, nil
 }
 
@@ -42,7 +44,16 @@ var (
 
 type Workflow struct {
 	order   *temporal.Order
-	confirm *temporal.VendorOrderConfirmSignal
+	confirm *temporal.VendorOrderCallbackSignal
+	payment workflow.Channel
+}
+
+func (w *Workflow) PaymentCallback(ctx workflow.Context, request *temporal.PaymentCallbackRequest) error {
+	if w.order.Status > temporal.OrderStatus_OrderStatusNew {
+		return errors.New("order status is not new")
+	}
+	w.payment.Send(ctx, request)
+	return nil
 }
 
 func (w *Workflow) GetOrder() (*temporal.Order, error) {
@@ -56,17 +67,57 @@ func (w *Workflow) Execute(ctx workflow.Context) error {
 	// Ожидаем подтверждения оплаты для онлайн платежа
 	// Используем высокочастотное активити
 	if w.order.PaymentType == temporal.PaymentType_ONLINE {
-		payment, err := temporal.GetPayment(ctx, &temporal.PaymentStatusRequest{})
-		if err != nil {
-			return err
+		var (
+			err           error
+			paymentStatus temporal.PaymentStatus
+		)
+
+		// Запускаем футур с высокочастотным актитивити
+		getPaymentCtx, getPaymentCancel := workflow.WithCancel(ctx)
+		getPayment := temporal.GetPaymentAsync(getPaymentCtx, &temporal.PaymentStatusRequest{})
+		getPaymentCallback := func(f workflow.Future) {
+			var payment temporal.PaymentStatusResponse
+			err = f.Get(ctx, &payment)
+			if err != nil {
+				return
+			}
+			paymentStatus = payment.Status
 		}
-		if payment.Status == temporal.PaymentStatus_PaymentStatusFailed {
+
+		// Запускаем ресивер из updateHandler
+		paymentReceiveCallback := func(f workflow.ReceiveChannel, _ bool) {
+			var payment temporal.PaymentCallbackRequest
+			_ = f.Receive(ctx, &payment)
+			paymentStatus = payment.Status
+		}
+
+		// Запускаем селектор:
+		// - Либо вернется результат активити, поллящий платежную систему
+		// - Либо придет колбек от платежной системы
+		workflow.
+			NewSelector(ctx).
+			AddFuture(getPayment.Future, getPaymentCallback).
+			AddReceive(w.payment, paymentReceiveCallback).
+			Select(ctx)
+
+		// Дергаем cancelHandler для getPaymentActivity
+		getPaymentCancel()
+
+		// Если активити вернулось с ошибкой
+		if err != nil {
 			w.order.Status = temporal.OrderStatus_OrderStatusCancelled
+			metrics.RecordOrderStatus(ctx, w.order)
+			return workflow.ErrCanceled
+		}
+
+		// И если статус, что платеж отменен
+		if paymentStatus == temporal.PaymentStatus_PaymentStatusFailed {
+			w.order.Status = temporal.OrderStatus_OrderStatusCancelled
+			metrics.RecordOrderStatus(ctx, w.order)
 			return workflow.ErrCanceled
 		}
 	}
 
-	// Выставляем статус и пишем метрику
 	w.order.Status = temporal.OrderStatus_OrderStatusConfirmed
 	metrics.RecordOrderStatus(ctx, w.order)
 
@@ -86,22 +137,43 @@ func (w *Workflow) Execute(ctx workflow.Context) error {
 		if w.order.Status > temporal.OrderStatus_OrderStatusReady {
 			break
 		}
+
+		// обработка колбека от вендора
+		onVendorOrderCallback := func(request *temporal.VendorOrderCallbackRequest) {
+			newStatus := vendorOrderStatusMap[request.Status]
+			if w.order.Status == newStatus {
+				return
+			}
+			w.order.Status = newStatus
+			metrics.RecordOrderStatus(ctx, w.order)
+
+		}
+
+		// Если истекло время, то делаем сами запрос к вендору
 		timerFuture := workflow.NewTimer(ctx, time.Minute)
-		s := workflow.NewSelector(ctx)
-		w.confirm.Select(s, func(request *temporal.VendorOrderConfirmRequest) {
-			w.order.Status = vendorOrderStatusMap[request.Status]
-		})
-		s.AddFuture(timerFuture, func(workflow.Future) {
+		onTimeoutCallback := func(workflow.Future) {
 			vendorOrder, err := temporal.GetVendorOrder(ctx, &temporal.VendorOrderRequest{
 				Id: vendorOrderResponse.Id,
 			})
 			if err != nil {
 				workflow.GetLogger(ctx).Error("failed to poll", "err", err.Error())
 			}
-			w.order.Status = vendorOrderStatusMap[vendorOrder.Status]
-		})
+			newStatus := vendorOrderStatusMap[vendorOrder.Status]
+			if w.order.Status == newStatus {
+				return
+			}
+			w.order.Status = newStatus
+			metrics.RecordOrderStatus(ctx, w.order)
 
-		s.Select(ctx)
+		}
+
+		// Запускаем селектор:
+		// - либо получаем колбек от вендора
+		// - либо ждем миинуту минут
+		w.confirm.
+			Select(workflow.NewSelector(ctx), onVendorOrderCallback).
+			AddFuture(timerFuture, onTimeoutCallback).
+			Select(ctx)
 	}
 
 	return nil

@@ -16,9 +16,11 @@ import (
 	"fmt"
 	expression "github.com/cludden/protoc-gen-go-temporal/pkg/expression"
 	helpers "github.com/cludden/protoc-gen-go-temporal/pkg/helpers"
+	testutil "github.com/cludden/protoc-gen-go-temporal/pkg/testutil"
 	gohomedir "github.com/mitchellh/go-homedir"
 	v2 "github.com/urfave/cli/v2"
 	enumsv1 "go.temporal.io/api/enums/v1"
+	serviceerror "go.temporal.io/api/serviceerror"
 	activity "go.temporal.io/sdk/activity"
 	client "go.temporal.io/sdk/client"
 	temporal "go.temporal.io/sdk/temporal"
@@ -30,6 +32,7 @@ import (
 	"log/slog"
 	"os"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -60,7 +63,12 @@ const (
 
 // temporal.Processing signal names
 const (
-	VendorOrderConfirmSignalName = "temporal.Processing.VendorOrderConfirm"
+	VendorOrderCallbackSignalName = "temporal.Processing.VendorOrderCallback"
+)
+
+// temporal.Processing update names
+const (
+	PaymentCallbackUpdateName = "temporal.Processing.PaymentCallback"
 )
 
 // ProcessingClient describes a client for a(n) temporal.Processing worker
@@ -83,8 +91,17 @@ type ProcessingClient interface {
 	// temporal.Processing.GetOrder executes a(n) temporal.Processing.GetOrder query
 	GetOrder(ctx context.Context, workflowID string, runID string) (*Order, error)
 
-	// Подтверждение заказа
-	VendorOrderConfirm(ctx context.Context, workflowID string, runID string, signal *VendorOrderConfirmRequest) error
+	// Колбек от вендора
+	VendorOrderCallback(ctx context.Context, workflowID string, runID string, signal *VendorOrderCallbackRequest) error
+
+	// Колбек от платежной системы
+	PaymentCallback(ctx context.Context, workflowID string, runID string, req *PaymentCallbackRequest, opts ...*PaymentCallbackOptions) error
+
+	// PaymentCallbackAsync starts a(n) temporal.Processing.PaymentCallback update and returns a handle to the workflow update
+	PaymentCallbackAsync(ctx context.Context, workflowID string, runID string, req *PaymentCallbackRequest, opts ...*PaymentCallbackOptions) (PaymentCallbackHandle, error)
+
+	// GetPaymentCallback retrieves a handle to an existing temporal.Processing.PaymentCallback update
+	GetPaymentCallback(ctx context.Context, req client.GetWorkflowUpdateHandleOptions) (PaymentCallbackHandle, error)
 }
 
 // processingClient implements a temporal client for a temporal.Processing service
@@ -215,9 +232,59 @@ func (c *processingClient) GetOrder(ctx context.Context, workflowID string, runI
 	return &resp, nil
 }
 
-// Подтверждение заказа
-func (c *processingClient) VendorOrderConfirm(ctx context.Context, workflowID string, runID string, signal *VendorOrderConfirmRequest) error {
-	return c.client.SignalWorkflow(ctx, workflowID, runID, VendorOrderConfirmSignalName, signal)
+// Колбек от вендора
+func (c *processingClient) VendorOrderCallback(ctx context.Context, workflowID string, runID string, signal *VendorOrderCallbackRequest) error {
+	return c.client.SignalWorkflow(ctx, workflowID, runID, VendorOrderCallbackSignalName, signal)
+}
+
+// Колбек от платежной системы
+func (c *processingClient) PaymentCallback(ctx context.Context, workflowID string, runID string, req *PaymentCallbackRequest, opts ...*PaymentCallbackOptions) error {
+	// initialize update options
+	o := NewPaymentCallbackOptions()
+	if len(opts) > 0 && opts[0].Options != nil {
+		o = opts[0]
+	}
+
+	// call sync update with WorkflowUpdateStageCompleted wait policy
+	handle, err := c.PaymentCallbackAsync(ctx, workflowID, runID, req, o.WithWaitPolicy(client.WorkflowUpdateStageCompleted))
+	if err != nil {
+		return err
+	}
+
+	// block on update completion
+	return handle.Get(ctx)
+}
+
+// Колбек от платежной системы
+func (c *processingClient) PaymentCallbackAsync(ctx context.Context, workflowID string, runID string, req *PaymentCallbackRequest, opts ...*PaymentCallbackOptions) (PaymentCallbackHandle, error) {
+	// initialize update options
+	var o *PaymentCallbackOptions
+	if len(opts) > 0 && opts[0] != nil {
+		o = opts[0]
+	} else {
+		o = NewPaymentCallbackOptions()
+	}
+
+	// build UpdateWorkflowOptions
+	options, err := o.Build(workflowID, runID, req)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
+	}
+
+	// update workflow
+	handle, err := c.client.UpdateWorkflow(ctx, *options)
+	if err != nil {
+		return nil, err
+	}
+	return &paymentCallbackHandle{client: c, handle: handle}, nil
+}
+
+// GetPaymentCallback retrieves a handle to an existing temporal.Processing.PaymentCallback update
+func (c *processingClient) GetPaymentCallback(ctx context.Context, req client.GetWorkflowUpdateHandleOptions) (PaymentCallbackHandle, error) {
+	return &paymentCallbackHandle{
+		client: c,
+		handle: c.client.GetWorkflowUpdateHandle(req),
+	}, nil
 }
 
 // ProcessingFlowOptions provides configuration for a temporal.Processing.ProcessingFlow workflow operation
@@ -355,8 +422,14 @@ type ProcessingFlowRun interface {
 	// temporal.Processing.GetOrder executes a(n) temporal.Processing.GetOrder query
 	GetOrder(ctx context.Context) (*Order, error)
 
-	// Подтверждение заказа
-	VendorOrderConfirm(ctx context.Context, req *VendorOrderConfirmRequest) error
+	// Колбек от вендора
+	VendorOrderCallback(ctx context.Context, req *VendorOrderCallbackRequest) error
+
+	// Колбек от платежной системы
+	PaymentCallback(ctx context.Context, req *PaymentCallbackRequest, opts ...*PaymentCallbackOptions) error
+
+	// Колбек от платежной системы
+	PaymentCallbackAsync(ctx context.Context, req *PaymentCallbackRequest, opts ...*PaymentCallbackOptions) (PaymentCallbackHandle, error)
 }
 
 // processingFlowRun provides an internal implementation of a(n) ProcessingFlowRunRun
@@ -400,9 +473,137 @@ func (r *processingFlowRun) GetOrder(ctx context.Context) (*Order, error) {
 	return r.client.GetOrder(ctx, r.ID(), "")
 }
 
-// Подтверждение заказа
-func (r *processingFlowRun) VendorOrderConfirm(ctx context.Context, req *VendorOrderConfirmRequest) error {
-	return r.client.VendorOrderConfirm(ctx, r.ID(), "", req)
+// Колбек от вендора
+func (r *processingFlowRun) VendorOrderCallback(ctx context.Context, req *VendorOrderCallbackRequest) error {
+	return r.client.VendorOrderCallback(ctx, r.ID(), "", req)
+}
+
+// Колбек от платежной системы
+func (r *processingFlowRun) PaymentCallback(ctx context.Context, req *PaymentCallbackRequest, opts ...*PaymentCallbackOptions) error {
+	return r.client.PaymentCallback(ctx, r.ID(), r.RunID(), req, opts...)
+}
+
+// Колбек от платежной системы
+func (r *processingFlowRun) PaymentCallbackAsync(ctx context.Context, req *PaymentCallbackRequest, opts ...*PaymentCallbackOptions) (PaymentCallbackHandle, error) {
+	return r.client.PaymentCallbackAsync(ctx, r.ID(), r.RunID(), req, opts...)
+}
+
+// PaymentCallbackHandle describes a(n) temporal.Processing.PaymentCallback update handle
+type PaymentCallbackHandle interface {
+	// WorkflowID returns the workflow ID
+	WorkflowID() string
+	// RunID returns the workflow instance ID
+	RunID() string
+	// UpdateID returns the update ID
+	UpdateID() string
+	// Get blocks until the workflow is complete and returns the result
+	Get(ctx context.Context) error
+}
+
+// paymentCallbackHandle provides an internal implementation of a(n) PaymentCallbackHandle
+type paymentCallbackHandle struct {
+	client *processingClient
+	handle client.WorkflowUpdateHandle
+}
+
+// WorkflowID returns the workflow ID
+func (h *paymentCallbackHandle) WorkflowID() string {
+	return h.handle.WorkflowID()
+}
+
+// RunID returns the execution ID
+func (h *paymentCallbackHandle) RunID() string {
+	return h.handle.RunID()
+}
+
+// UpdateID returns the update ID
+func (h *paymentCallbackHandle) UpdateID() string {
+	return h.handle.UpdateID()
+}
+
+// Get blocks until the update wait policy is met, returning the result if applicable
+func (h *paymentCallbackHandle) Get(ctx context.Context) error {
+	var err error
+	doneCh := make(chan struct{})
+	gctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go func() {
+		for {
+			var deadlineExceeded *serviceerror.DeadlineExceeded
+			if err = h.handle.Get(gctx, nil); err != nil && ctx.Err() == nil && (errors.As(err, &deadlineExceeded) || strings.Contains(err.Error(), context.DeadlineExceeded.Error())) {
+				continue
+			}
+			break
+		}
+		close(doneCh)
+	}()
+
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-doneCh:
+		return err
+	}
+}
+
+// PaymentCallbackOptions provides configuration for a temporal.Processing.PaymentCallback update operation
+type PaymentCallbackOptions struct {
+	Options    *client.UpdateWorkflowOptions
+	id         *string
+	waitPolicy client.WorkflowUpdateStage
+}
+
+// NewPaymentCallbackOptions initializes a new PaymentCallbackOptions value
+func NewPaymentCallbackOptions() *PaymentCallbackOptions {
+	return &PaymentCallbackOptions{Options: &client.UpdateWorkflowOptions{}}
+}
+
+// Build initializes a new client.UpdateWorkflowOptions with defaults and overrides applied
+func (o *PaymentCallbackOptions) Build(workflowID string, runID string, req *PaymentCallbackRequest) (opts *client.UpdateWorkflowOptions, err error) {
+	// use user-provided UpdateWorkflowOptions if exists
+	if o.Options != nil {
+		opts = o.Options
+	} else {
+		opts = &client.UpdateWorkflowOptions{}
+	}
+
+	// set constants
+	opts.Args = []any{req}
+	opts.RunID = runID
+	opts.UpdateName = PaymentCallbackUpdateName
+	opts.WorkflowID = workflowID
+
+	// set UpdateID
+	if v := o.id; v != nil {
+		opts.UpdateID = *v
+	}
+
+	// set WaitPolicy
+	if v := o.waitPolicy; v != client.WorkflowUpdateStageUnspecified {
+		opts.WaitForStage = v
+	} else if opts.WaitForStage == client.WorkflowUpdateStageUnspecified {
+		opts.WaitForStage = client.WorkflowUpdateStageCompleted
+	}
+	return opts, nil
+}
+
+// WithUpdateID sets the UpdateID
+func (o *PaymentCallbackOptions) WithUpdateID(id string) *PaymentCallbackOptions {
+	o.id = &id
+	return o
+}
+
+// WithUpdateWorkflowOptions sets the initial client.UpdateWorkflowOptions
+func (o *PaymentCallbackOptions) WithUpdateWorkflowOptions(options client.UpdateWorkflowOptions) *PaymentCallbackOptions {
+	o.Options = &options
+	return o
+}
+
+// WithWaitPolicy sets the WaitPolicy
+func (o *PaymentCallbackOptions) WithWaitPolicy(policy client.WorkflowUpdateStage) *PaymentCallbackOptions {
+	o.waitPolicy = policy
+	return o
 }
 
 // Reference to generated workflow functions
@@ -456,8 +657,8 @@ func buildProcessingFlow(ctor func(workflow.Context, *ProcessingFlowWorkflowInpu
 	return func(ctx workflow.Context, req *ProcessingFlowRequest) error {
 		input := &ProcessingFlowWorkflowInput{
 			Req: req,
-			VendorOrderConfirm: &VendorOrderConfirmSignal{
-				Channel: workflow.GetSignalChannel(ctx, VendorOrderConfirmSignalName),
+			VendorOrderCallback: &VendorOrderCallbackSignal{
+				Channel: workflow.GetSignalChannel(ctx, VendorOrderCallbackSignalName),
 			},
 		}
 		wf, err := ctor(ctx, input)
@@ -472,14 +673,20 @@ func buildProcessingFlow(ctor func(workflow.Context, *ProcessingFlowWorkflowInpu
 		if err := workflow.SetQueryHandler(ctx, GetOrderQueryName, wf.GetOrder); err != nil {
 			return err
 		}
+		{
+			opts := workflow.UpdateHandlerOptions{}
+			if err := workflow.SetUpdateHandlerWithOptions(ctx, PaymentCallbackUpdateName, wf.PaymentCallback, opts); err != nil {
+				return err
+			}
+		}
 		return wf.Execute(ctx)
 	}
 }
 
 // ProcessingFlowWorkflowInput describes the input to a(n) temporal.Processing.ProcessingFlow workflow constructor
 type ProcessingFlowWorkflowInput struct {
-	Req                *ProcessingFlowRequest
-	VendorOrderConfirm *VendorOrderConfirmSignal
+	Req                 *ProcessingFlowRequest
+	VendorOrderCallback *VendorOrderCallbackSignal
 }
 
 // ProcessingFlowWorkflow describes a(n) temporal.Processing.ProcessingFlow workflow implementation
@@ -491,6 +698,9 @@ type ProcessingFlowWorkflow interface {
 
 	// temporal.Processing.GetOrder implements a(n) temporal.Processing.GetOrder query handler
 	GetOrder() (*Order, error)
+
+	// Колбек от платежной системы
+	PaymentCallback(workflow.Context, *PaymentCallbackRequest) error
 }
 
 // ProcessingFlowChild executes a child temporal.Processing.ProcessingFlow workflow and blocks until error or response received
@@ -708,56 +918,56 @@ func (r *ProcessingFlowChildRun) WaitStart(ctx workflow.Context) (*workflow.Exec
 	return &exec, nil
 }
 
-// VendorOrderConfirm sends a(n) "temporal.Processing.VendorOrderConfirm" signal request to the child workflow
-func (r *ProcessingFlowChildRun) VendorOrderConfirm(ctx workflow.Context, input *VendorOrderConfirmRequest) error {
-	return r.VendorOrderConfirmAsync(ctx, input).Get(ctx, nil)
+// VendorOrderCallback sends a(n) "temporal.Processing.VendorOrderCallback" signal request to the child workflow
+func (r *ProcessingFlowChildRun) VendorOrderCallback(ctx workflow.Context, input *VendorOrderCallbackRequest) error {
+	return r.VendorOrderCallbackAsync(ctx, input).Get(ctx, nil)
 }
 
-// VendorOrderConfirmAsync sends a(n) "temporal.Processing.VendorOrderConfirm" signal request to the child workflow
-func (r *ProcessingFlowChildRun) VendorOrderConfirmAsync(ctx workflow.Context, input *VendorOrderConfirmRequest) workflow.Future {
-	return r.Future.SignalChildWorkflow(ctx, VendorOrderConfirmSignalName, input)
+// VendorOrderCallbackAsync sends a(n) "temporal.Processing.VendorOrderCallback" signal request to the child workflow
+func (r *ProcessingFlowChildRun) VendorOrderCallbackAsync(ctx workflow.Context, input *VendorOrderCallbackRequest) workflow.Future {
+	return r.Future.SignalChildWorkflow(ctx, VendorOrderCallbackSignalName, input)
 }
 
-// VendorOrderConfirmSignal describes a(n) temporal.Processing.VendorOrderConfirm signal
-type VendorOrderConfirmSignal struct {
+// VendorOrderCallbackSignal describes a(n) temporal.Processing.VendorOrderCallback signal
+type VendorOrderCallbackSignal struct {
 	Channel workflow.ReceiveChannel
 }
 
-// NewVendorOrderConfirmSignal initializes a new temporal.Processing.VendorOrderConfirm signal wrapper
-func NewVendorOrderConfirmSignal(ctx workflow.Context) *VendorOrderConfirmSignal {
-	return &VendorOrderConfirmSignal{Channel: workflow.GetSignalChannel(ctx, VendorOrderConfirmSignalName)}
+// NewVendorOrderCallbackSignal initializes a new temporal.Processing.VendorOrderCallback signal wrapper
+func NewVendorOrderCallbackSignal(ctx workflow.Context) *VendorOrderCallbackSignal {
+	return &VendorOrderCallbackSignal{Channel: workflow.GetSignalChannel(ctx, VendorOrderCallbackSignalName)}
 }
 
-// Receive blocks until a(n) temporal.Processing.VendorOrderConfirm signal is received
-func (s *VendorOrderConfirmSignal) Receive(ctx workflow.Context) (*VendorOrderConfirmRequest, bool) {
-	var resp VendorOrderConfirmRequest
+// Receive blocks until a(n) temporal.Processing.VendorOrderCallback signal is received
+func (s *VendorOrderCallbackSignal) Receive(ctx workflow.Context) (*VendorOrderCallbackRequest, bool) {
+	var resp VendorOrderCallbackRequest
 	more := s.Channel.Receive(ctx, &resp)
 	return &resp, more
 }
 
-// ReceiveAsync checks for a temporal.Processing.VendorOrderConfirm signal without blocking
-func (s *VendorOrderConfirmSignal) ReceiveAsync() *VendorOrderConfirmRequest {
-	var resp VendorOrderConfirmRequest
+// ReceiveAsync checks for a temporal.Processing.VendorOrderCallback signal without blocking
+func (s *VendorOrderCallbackSignal) ReceiveAsync() *VendorOrderCallbackRequest {
+	var resp VendorOrderCallbackRequest
 	if ok := s.Channel.ReceiveAsync(&resp); !ok {
 		return nil
 	}
 	return &resp
 }
 
-// ReceiveWithTimeout blocks until a(n) temporal.Processing.VendorOrderConfirm signal is received or timeout expires.
+// ReceiveWithTimeout blocks until a(n) temporal.Processing.VendorOrderCallback signal is received or timeout expires.
 // Returns more value of false when Channel is closed.
 // Returns ok value of false when no value was found in the channel for the duration of timeout or the ctx was canceled.
 // resp will be nil if ok is false.
-func (s *VendorOrderConfirmSignal) ReceiveWithTimeout(ctx workflow.Context, timeout time.Duration) (resp *VendorOrderConfirmRequest, ok bool, more bool) {
-	resp = &VendorOrderConfirmRequest{}
+func (s *VendorOrderCallbackSignal) ReceiveWithTimeout(ctx workflow.Context, timeout time.Duration) (resp *VendorOrderCallbackRequest, ok bool, more bool) {
+	resp = &VendorOrderCallbackRequest{}
 	if ok, more = s.Channel.ReceiveWithTimeout(ctx, timeout, &resp); !ok {
 		return nil, false, more
 	}
 	return
 }
 
-// Select checks for a(n) temporal.Processing.VendorOrderConfirm signal without blocking
-func (s *VendorOrderConfirmSignal) Select(sel workflow.Selector, fn func(*VendorOrderConfirmRequest)) workflow.Selector {
+// Select checks for a(n) temporal.Processing.VendorOrderCallback signal without blocking
+func (s *VendorOrderCallbackSignal) Select(sel workflow.Selector, fn func(*VendorOrderCallbackRequest)) workflow.Selector {
 	return sel.AddReceive(s.Channel, func(workflow.ReceiveChannel, bool) {
 		req := s.ReceiveAsync()
 		if fn != nil {
@@ -766,14 +976,14 @@ func (s *VendorOrderConfirmSignal) Select(sel workflow.Selector, fn func(*Vendor
 	})
 }
 
-// Подтверждение заказа
-func VendorOrderConfirmExternal(ctx workflow.Context, workflowID string, runID string, req *VendorOrderConfirmRequest) error {
-	return VendorOrderConfirmExternalAsync(ctx, workflowID, runID, req).Get(ctx, nil)
+// Колбек от вендора
+func VendorOrderCallbackExternal(ctx workflow.Context, workflowID string, runID string, req *VendorOrderCallbackRequest) error {
+	return VendorOrderCallbackExternalAsync(ctx, workflowID, runID, req).Get(ctx, nil)
 }
 
-// Подтверждение заказа
-func VendorOrderConfirmExternalAsync(ctx workflow.Context, workflowID string, runID string, req *VendorOrderConfirmRequest) workflow.Future {
-	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, VendorOrderConfirmSignalName, req)
+// Колбек от вендора
+func VendorOrderCallbackExternalAsync(ctx workflow.Context, workflowID string, runID string, req *VendorOrderCallbackRequest) workflow.Future {
+	return workflow.SignalExternalWorkflow(ctx, workflowID, runID, VendorOrderCallbackSignalName, req)
 }
 
 // ProcessingActivities describes available worker activities
@@ -1602,10 +1812,92 @@ func (c *TestProcessingClient) GetOrder(ctx context.Context, workflowID string, 
 	}
 }
 
-// VendorOrderConfirm executes a temporal.Processing.VendorOrderConfirm signal
-func (c *TestProcessingClient) VendorOrderConfirm(ctx context.Context, workflowID string, runID string, req *VendorOrderConfirmRequest) error {
-	c.env.SignalWorkflow(VendorOrderConfirmSignalName, req)
+// VendorOrderCallback executes a temporal.Processing.VendorOrderCallback signal
+func (c *TestProcessingClient) VendorOrderCallback(ctx context.Context, workflowID string, runID string, req *VendorOrderCallbackRequest) error {
+	c.env.SignalWorkflow(VendorOrderCallbackSignalName, req)
 	return nil
+}
+
+// PaymentCallback executes a(n) temporal.Processing.PaymentCallback update in the test environment
+func (c *TestProcessingClient) PaymentCallback(ctx context.Context, workflowID string, runID string, req *PaymentCallbackRequest, opts ...*PaymentCallbackOptions) error {
+	options := NewPaymentCallbackOptions()
+	if len(opts) > 0 && opts[0].Options != nil {
+		options = opts[0]
+	}
+	options.Options.WaitForStage = client.WorkflowUpdateStageCompleted
+	handle, err := c.PaymentCallbackAsync(ctx, workflowID, runID, req, options)
+	if err != nil {
+		return err
+	}
+	return handle.Get(ctx)
+}
+
+// PaymentCallbackAsync executes a(n) temporal.Processing.PaymentCallback update in the test environment
+func (c *TestProcessingClient) PaymentCallbackAsync(ctx context.Context, workflowID string, runID string, req *PaymentCallbackRequest, opts ...*PaymentCallbackOptions) (PaymentCallbackHandle, error) {
+	var o *PaymentCallbackOptions
+	if len(opts) > 0 && opts[0] != nil {
+		o = opts[0]
+	} else {
+		o = NewPaymentCallbackOptions()
+	}
+	options, err := o.Build(workflowID, runID, req)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing UpdateWorkflowWithOptions: %w", err)
+	}
+	uc := testutil.NewUpdateCallbacks()
+	c.env.UpdateWorkflow(PaymentCallbackUpdateName, workflowID, uc, req)
+	return &testPaymentCallbackHandle{
+		callbacks:  uc,
+		env:        c.env,
+		opts:       options,
+		runID:      runID,
+		workflowID: workflowID,
+		req:        req,
+	}, nil
+}
+
+// GetPaymentCallback retrieves a handle to an existing temporal.Processing.PaymentCallback update
+func (c *TestProcessingClient) GetPaymentCallback(ctx context.Context, req client.GetWorkflowUpdateHandleOptions) (PaymentCallbackHandle, error) {
+	return nil, errors.New("unimplemented")
+}
+
+var _ PaymentCallbackHandle = &testPaymentCallbackHandle{}
+
+// testPaymentCallbackHandle provides an internal implementation of a(n) PaymentCallbackHandle
+type testPaymentCallbackHandle struct {
+	callbacks  *testutil.UpdateCallbacks
+	env        *testsuite.TestWorkflowEnvironment
+	opts       *client.UpdateWorkflowOptions
+	req        *PaymentCallbackRequest
+	runID      string
+	workflowID string
+}
+
+// Get retrieves a test temporal.Processing.PaymentCallback update result
+func (h *testPaymentCallbackHandle) Get(ctx context.Context) error {
+	if _, err := h.callbacks.Get(ctx); err != nil {
+		return err
+	} else {
+		return nil
+	}
+}
+
+// RunID implementation
+func (h *testPaymentCallbackHandle) RunID() string {
+	return h.runID
+}
+
+// UpdateID implementation
+func (h *testPaymentCallbackHandle) UpdateID() string {
+	if h.opts != nil {
+		return h.opts.UpdateID
+	}
+	return ""
+}
+
+// WorkflowID implementation
+func (h *testPaymentCallbackHandle) WorkflowID() string {
+	return h.workflowID
 }
 
 var _ ProcessingFlowRun = &testProcessingFlowRun{}
@@ -1664,9 +1956,19 @@ func (r *testProcessingFlowRun) GetOrder(ctx context.Context) (*Order, error) {
 	return r.client.GetOrder(ctx, r.ID(), r.RunID())
 }
 
-// VendorOrderConfirm executes a temporal.Processing.VendorOrderConfirm signal against a test temporal.Processing.ProcessingFlow workflow
-func (r *testProcessingFlowRun) VendorOrderConfirm(ctx context.Context, req *VendorOrderConfirmRequest) error {
-	return r.client.VendorOrderConfirm(ctx, r.ID(), r.RunID(), req)
+// VendorOrderCallback executes a temporal.Processing.VendorOrderCallback signal against a test temporal.Processing.ProcessingFlow workflow
+func (r *testProcessingFlowRun) VendorOrderCallback(ctx context.Context, req *VendorOrderCallbackRequest) error {
+	return r.client.VendorOrderCallback(ctx, r.ID(), r.RunID(), req)
+}
+
+// PaymentCallback executes a(n) temporal.Processing.PaymentCallback update against a test temporal.Processing.ProcessingFlow workflow
+func (r *testProcessingFlowRun) PaymentCallback(ctx context.Context, req *PaymentCallbackRequest, opts ...*PaymentCallbackOptions) error {
+	return r.client.PaymentCallback(ctx, r.ID(), r.RunID(), req, opts...)
+}
+
+// PaymentCallbackAsync executes a(n) temporal.Processing.PaymentCallback update against a test temporal.Processing.ProcessingFlow workflow
+func (r *testProcessingFlowRun) PaymentCallbackAsync(ctx context.Context, req *PaymentCallbackRequest, opts ...*PaymentCallbackOptions) (PaymentCallbackHandle, error) {
+	return r.client.PaymentCallbackAsync(ctx, r.ID(), r.RunID(), req, opts...)
 }
 
 // ProcessingCliOptions describes runtime configuration for temporal.Processing cli
@@ -1786,8 +2088,8 @@ func newProcessingCommands(options ...*ProcessingCliOptions) ([]*v2.Command, err
 			},
 		},
 		{
-			Name:                   "vendor-order-confirm",
-			Usage:                  "Подтверждение заказа",
+			Name:                   "vendor-order-callback",
+			Usage:                  "Колбек от вендора",
 			Category:               "SIGNALS",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
@@ -1822,15 +2124,79 @@ func newProcessingCommands(options ...*ProcessingCliOptions) ([]*v2.Command, err
 				}
 				defer c.Close()
 				client := NewProcessingClient(c)
-				req, err := UnmarshalCliFlagsToVendorOrderConfirmRequest(cmd)
+				req, err := UnmarshalCliFlagsToVendorOrderCallbackRequest(cmd)
 				if err != nil {
 					return fmt.Errorf("error unmarshalling request: %w", err)
 				}
-				if err := client.VendorOrderConfirm(cmd.Context, cmd.String("workflow-id"), cmd.String("run-id"), req); err != nil {
-					return fmt.Errorf("error sending %q signal: %w", VendorOrderConfirmSignalName, err)
+				if err := client.VendorOrderCallback(cmd.Context, cmd.String("workflow-id"), cmd.String("run-id"), req); err != nil {
+					return fmt.Errorf("error sending %q signal: %w", VendorOrderCallbackSignalName, err)
 				}
 				fmt.Println("success")
 				return nil
+			},
+		},
+		{
+			Name:                   "payment-callback",
+			Usage:                  "Колбек от платежной системы",
+			Category:               "UPDATES",
+			UseShortOptionHandling: true,
+			Before:                 opts.before,
+			After:                  opts.after,
+			Flags: []v2.Flag{
+				&v2.BoolFlag{
+					Name:    "detach",
+					Usage:   "run workflow update in the background and print workflow, execution, and udpate id",
+					Aliases: []string{"d"},
+				},
+				&v2.StringFlag{
+					Name:     "workflow-id",
+					Usage:    "workflow id",
+					Required: true,
+					Aliases:  []string{"w"},
+				},
+				&v2.StringFlag{
+					Name:    "run-id",
+					Usage:   "run id",
+					Aliases: []string{"r"},
+				},
+				&v2.StringFlag{
+					Name:    "input-file",
+					Usage:   "path to json-formatted input file",
+					Aliases: []string{"f"},
+				},
+				&v2.StringFlag{
+					Name:     "status",
+					Usage:    "set the value of the operation's \"Status\" parameter (PaymentStatusNew, PaymentStatusHold, PaymentStatusCharged, PaymentStatusFailed)",
+					Category: "INPUT",
+				},
+			},
+			Action: func(cmd *v2.Context) error {
+				c, err := opts.clientForCommand(cmd)
+				if err != nil {
+					return fmt.Errorf("error initializing client for command: %w", err)
+				}
+				defer c.Close()
+				client := NewProcessingClient(c)
+				req, err := UnmarshalCliFlagsToPaymentCallbackRequest(cmd)
+				if err != nil {
+					return fmt.Errorf("error unmarshalling request: %w", err)
+				}
+				handle, err := client.PaymentCallbackAsync(cmd.Context, cmd.String("workflow-id"), cmd.String("run-id"), req)
+				if err != nil {
+					return fmt.Errorf("error executing %s update: %w", PaymentCallbackUpdateName, err)
+				}
+				if cmd.Bool("detach") {
+					fmt.Println("success")
+					fmt.Printf("workflow id: %s\n", handle.WorkflowID())
+					fmt.Printf("run id: %s\n", handle.RunID())
+					fmt.Printf("update id: %s\n", handle.UpdateID())
+					return nil
+				}
+				if err := handle.Get(cmd.Context); err != nil {
+					return err
+				} else {
+					return nil
+				}
 			},
 		},
 		{
@@ -1948,9 +2314,9 @@ func newProcessingCommands(options ...*ProcessingCliOptions) ([]*v2.Command, err
 	return commands, nil
 }
 
-// UnmarshalCliFlagsToVendorOrderConfirmRequest unmarshals a VendorOrderConfirmRequest from command line flags
-func UnmarshalCliFlagsToVendorOrderConfirmRequest(cmd *v2.Context) (*VendorOrderConfirmRequest, error) {
-	var result VendorOrderConfirmRequest
+// UnmarshalCliFlagsToVendorOrderCallbackRequest unmarshals a VendorOrderCallbackRequest from command line flags
+func UnmarshalCliFlagsToVendorOrderCallbackRequest(cmd *v2.Context) (*VendorOrderCallbackRequest, error) {
+	var result VendorOrderCallbackRequest
 	var hasValues bool
 	if cmd.IsSet("input-file") {
 		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
@@ -1973,6 +2339,38 @@ func UnmarshalCliFlagsToVendorOrderConfirmRequest(cmd *v2.Context) (*VendorOrder
 			return nil, fmt.Errorf("unsupported enum value for \"status\" flag: %q", cmd.String("status"))
 		}
 		result.Status = VendorOrderStatus(v)
+	}
+	if !hasValues {
+		return nil, nil
+	}
+	return &result, nil
+}
+
+// UnmarshalCliFlagsToPaymentCallbackRequest unmarshals a PaymentCallbackRequest from command line flags
+func UnmarshalCliFlagsToPaymentCallbackRequest(cmd *v2.Context) (*PaymentCallbackRequest, error) {
+	var result PaymentCallbackRequest
+	var hasValues bool
+	if cmd.IsSet("input-file") {
+		inputFile, err := gohomedir.Expand(cmd.String("input-file"))
+		if err != nil {
+			inputFile = cmd.String("input-file")
+		}
+		b, err := os.ReadFile(inputFile)
+		if err != nil {
+			return nil, fmt.Errorf("error reading input-file: %w", err)
+		}
+		if err := protojson.Unmarshal(b, &result); err != nil {
+			return nil, fmt.Errorf("error parsing input-file json: %w", err)
+		}
+		hasValues = true
+	}
+	if cmd.IsSet("status") {
+		hasValues = true
+		v, ok := PaymentStatus_value[cmd.String("status")]
+		if !ok {
+			return nil, fmt.Errorf("unsupported enum value for \"status\" flag: %q", cmd.String("status"))
+		}
+		result.Status = PaymentStatus(v)
 	}
 	if !hasValues {
 		return nil, nil
