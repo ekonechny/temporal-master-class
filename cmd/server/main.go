@@ -32,8 +32,26 @@ type srv struct {
 	pc  temporal.ProcessingClient
 }
 
-func (s *srv) VendorOrderConfirm(ctx context.Context, request *server.VendorOrderConfirmRequest) (*emptypb.Empty, error) {
-	return &emptypb.Empty{}, nil
+func (s *srv) PaymentCallback(ctx context.Context, request *server.PaymentCallbackRequest) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, s.pc.PaymentCallback(
+		ctx,
+		evalProcessingWorkflowID(request),
+		"",
+		&temporal.PaymentCallbackRequest{
+			Status: request.Status,
+		},
+	)
+}
+
+func (s *srv) VendorOrderCallback(ctx context.Context, request *server.VendorOrderCallbackRequest) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, s.pc.VendorOrderCallback(
+		ctx,
+		evalProcessingWorkflowID(request),
+		"",
+		&temporal.VendorOrderCallbackRequest{
+			Status: request.Status,
+		},
+	)
 }
 
 func (s *srv) GetProfile(ctx context.Context, request *server.GetProfileRequest) (*temporal.Profile, error) {

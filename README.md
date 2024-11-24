@@ -35,13 +35,13 @@ make deps
 ├── README.md
 ├── cmd
 │   ├── server
-│   │   └── main.go --> Команда, для запуска GRPC-сервера
+│   │   └── main.go
 │   └── worker
-│       └── main.go  --> Команда, для запуска воркера
+│       └── main.go
 ├── go.mod
 ├── go.sum
 ├── internal
-│   ├── generated --> Результаты кодгена
+│   ├── generated
 │   │   ├── server
 │   │   │   ├── server.pb.go
 │   │   │   └── server_grpc.pb.go
@@ -61,7 +61,7 @@ make deps
 │   │   └── vendors
 │   │       └── client.go
 │   ├── utils
-│   │   └── utils.go --> Полезные общие команды
+│   │   └── utils.go
 │   └── workflows
 │       ├── checkout
 │       │   ├── activities
@@ -91,10 +91,10 @@ make deps
 │       └── builder_test.go
 
 ├── proto
-│   ├── checkout.proto --> Workflow создания заказа
-│   ├── common.proto --> Общие сущности
-│   ├── customer.proto --> Workflow, описывающий жизненный цикл пользователя
-│   ├── processing.proto --> Workflow для процессинга заказа
+│   ├── checkout.proto
+│   ├── common.proto
+│   ├── customer.proto
+│   ├── processing.proto
 │   └── server.proto
 └── server.http  --> Примеры запросов к GRPC-серверу
 ```

@@ -67,6 +67,30 @@ GRPC localhost:50051/server.Customer/Checkout
     });
 %}
 
+### Оплатить заказ
+GRPC localhost:50051/server.Customer/PaymentCallback
+
+{
+  "id": "{{ orderId }}",
+  "status": 1
+}
+
+### Потвердить заказа вендором
+GRPC localhost:50051/server.Customer/VendorOrderCallback
+
+{
+  "id": "{{ orderId }}",
+  "status": 1
+}
+
+### Передать заказ курьеру
+GRPC localhost:50051/server.Customer/VendorOrderCallback
+
+{
+  "id": "{{ orderId }}",
+  "status": 4
+}
+
 ### Get order
 GRPC localhost:50051/server.Customer/GetOrder
 
