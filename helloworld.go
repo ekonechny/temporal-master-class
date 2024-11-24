@@ -3,6 +3,7 @@ package __helloworld
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/workflow"
@@ -11,12 +12,14 @@ import (
 // Workflow - самое простейший рабочий процесс исполняющий два действия Hello и Bye
 // калька отсюда https://github.com/temporalio/samples-go/blob/main/helloworld/helloworld.go
 func Workflow(ctx workflow.Context, name string) error {
+	// Задаем стандартные настройки для activity
+	ctx = workflow.WithActivityOptions(ctx, workflow.ActivityOptions{StartToCloseTimeout: time.Second})
 
 	// Создаем логер
 	logger := workflow.GetLogger(ctx)
 	logger.Info("HelloWorld workflow started", "name", name)
 
-	// Выполяем HelloActivity
+	// Выполняем HelloActivity
 	var helloResult string
 	if err := workflow.ExecuteActivity(ctx, HelloActivity, name).Get(ctx, &helloResult); err != nil {
 		logger.Error("HelloActivity failed.", "Error", err)
