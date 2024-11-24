@@ -31,7 +31,7 @@ service order {
     option (temporal.v1.query) = {};
   }
 
-  // Обновление инофрмации в запущенном workflow
+  // Обновление информации в запущенном workflow
   // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
   rpc Update(UpdateOrderRequest) returns (Order) {
     option (temporal.v1.update) = {};

@@ -88,7 +88,7 @@ type OrderClient interface {
 	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 	Delete(ctx context.Context, workflowID string, runID string) error
 
-	// Обновление инофрмации в запущенном workflow
+	// Обновление информации в запущенном workflow
 	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	Update(ctx context.Context, workflowID string, runID string, req *UpdateOrderRequest, opts ...*UpdateOptions) (*Order, error)
 
@@ -234,7 +234,7 @@ func (c *orderClient) Delete(ctx context.Context, workflowID string, runID strin
 	return c.client.SignalWorkflow(ctx, workflowID, runID, DeleteSignalName, nil)
 }
 
-// Обновление инофрмации в запущенном workflow
+// Обновление информации в запущенном workflow
 // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (c *orderClient) Update(ctx context.Context, workflowID string, runID string, req *UpdateOrderRequest, opts ...*UpdateOptions) (*Order, error) {
 	// initialize update options
@@ -253,7 +253,7 @@ func (c *orderClient) Update(ctx context.Context, workflowID string, runID strin
 	return handle.Get(ctx)
 }
 
-// Обновление инофрмации в запущенном workflow
+// Обновление информации в запущенном workflow
 // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (c *orderClient) UpdateAsync(ctx context.Context, workflowID string, runID string, req *UpdateOrderRequest, opts ...*UpdateOptions) (UpdateHandle, error) {
 	// initialize update options
@@ -426,11 +426,11 @@ type CreateOrderRun interface {
 	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-signal-handlers
 	Delete(ctx context.Context) error
 
-	// Обновление инофрмации в запущенном workflow
+	// Обновление информации в запущенном workflow
 	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	Update(ctx context.Context, req *UpdateOrderRequest, opts ...*UpdateOptions) (*Order, error)
 
-	// Обновление инофрмации в запущенном workflow
+	// Обновление информации в запущенном workflow
 	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	UpdateAsync(ctx context.Context, req *UpdateOrderRequest, opts ...*UpdateOptions) (UpdateHandle, error)
 }
@@ -483,13 +483,13 @@ func (r *createOrderRun) Delete(ctx context.Context) error {
 	return r.client.Delete(ctx, r.ID(), "")
 }
 
-// Обновление инофрмации в запущенном workflow
+// Обновление информации в запущенном workflow
 // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (r *createOrderRun) Update(ctx context.Context, req *UpdateOrderRequest, opts ...*UpdateOptions) (*Order, error) {
 	return r.client.Update(ctx, r.ID(), r.RunID(), req, opts...)
 }
 
-// Обновление инофрмации в запущенном workflow
+// Обновление информации в запущенном workflow
 // https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 func (r *createOrderRun) UpdateAsync(ctx context.Context, req *UpdateOrderRequest, opts ...*UpdateOptions) (UpdateHandle, error) {
 	return r.client.UpdateAsync(ctx, r.ID(), r.RunID(), req, opts...)
@@ -711,7 +711,7 @@ type CreateOrderWorkflow interface {
 	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	Read() (*Order, error)
 
-	// Обновление инофрмации в запущенном workflow
+	// Обновление информации в запущенном workflow
 	// https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers
 	Update(workflow.Context, *UpdateOrderRequest) (*Order, error)
 }
@@ -1384,7 +1384,7 @@ func newOrderCommands(options ...*OrderCliOptions) ([]*v2.Command, error) {
 		},
 		{
 			Name:                   "update",
-			Usage:                  "Обновление инофрмации в запущенном workflow https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers",
+			Usage:                  "Обновление информации в запущенном workflow https://docs.temporal.io/encyclopedia/workflow-message-passing#writing-query-handlers",
 			Category:               "UPDATES",
 			UseShortOptionHandling: true,
 			Before:                 opts.before,
