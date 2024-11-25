@@ -46,12 +46,13 @@ func (w *Workflow) UpdateCart(ctx workflow.Context, request *temporal.UpdateCart
 			Qty:   p.Qty,
 		})
 	}
+	total := calculateTotal(products)
 
 	w.cart = &temporal.Cart{
 		// Добавляем сюда генерацию UUID
-		// Id:       uuid.NewString(),
+		//Id:       uuid.NewString(),
 		Products: products,
-		Total:    calculateTotal(products),
+		Total:    total,
 	}
 
 	// Перезапускаем сервис видим другой uuid
@@ -64,7 +65,7 @@ func (w *Workflow) UpdateCart(ctx workflow.Context, request *temporal.UpdateCart
 		})
 		w.cart = &temporal.Cart{
 			Products: products,
-			Total:    calculateTotal(products),
+			Total:    total,
 		}
 		if err := encodedValue.Get(&w.cart.Id); err != nil {
 			return nil, err
@@ -73,27 +74,28 @@ func (w *Workflow) UpdateCart(ctx workflow.Context, request *temporal.UpdateCart
 
 	// Опачки
 	// wID customers/c527a4b1-10e0-4b0b-a555-8dd49f28055b RunID 81f1229f-a662-42b8-896f-af5d711d836b Attempt 1 Error [TMPRL1100] No cached result found for side effectID=1. KnownSideEffects=[] StackTrace coroutine temporal.Customer.UpdateCart [panic]:
-	/*
-		w.cart = &temporal.Cart{
-			Products: products,
-			Total:    calculateTotal(products),
-		}
 
-		v := workflow.GetVersion(ctx, "cartID", workflow.DefaultVersion, 1)
-		// А вот это нужно, чтобы реплей работал
-		if !workflow.IsReplaying(ctx) {
-			v = 1
-		}
-		if v > 0 {
-			encodedValue := workflow.SideEffect(ctx, func(ctx workflow.Context) interface{} {
-				return uuid.NewString()
-			})
+	/*if w.cart == nil {
+		w.cart = &temporal.Cart{}
+	}
+	w.cart.Products = products
+	w.cart.Total = total
+	// Если уже идентификатор задан, то скипаем
+	if w.cart.Id != "" {
+		return w.cart, nil
+	}
+	// Берем динамически создание версии
+	versionID := workflow.GetCurrentUpdateInfo(ctx).ID
+	v := workflow.GetVersion(ctx, fmt.Sprintf("cartUpdate-%s", versionID), workflow.DefaultVersion, 1)
+	if v > 0 {
+		encodedValue := workflow.SideEffect(ctx, func(ctx workflow.Context) interface{} {
+			return uuid.NewString()
+		})
 
-			if err := encodedValue.Get(&w.cart.Id); err != nil {
-				return nil, err
-			}
+		if err := encodedValue.Get(&w.cart.Id); err != nil {
+			return nil, err
 		}
-	*/
+	}*/
 	return w.cart, nil
 }
 
