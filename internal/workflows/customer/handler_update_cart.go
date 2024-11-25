@@ -3,6 +3,8 @@ package customer
 import (
 	"errors"
 
+	"fmt"
+
 	"github.com/google/uuid"
 	"go.temporal.io/sdk/workflow"
 
@@ -47,17 +49,20 @@ func (w *Workflow) UpdateCart(ctx workflow.Context, request *temporal.UpdateCart
 			Qty:   p.Qty,
 		})
 	}
+	total := calculateTotal(products)
 
-	w.cart = &temporal.Cart{
-		Products: products,
-		Total:    calculateTotal(products),
+	if w.cart == nil {
+		w.cart = &temporal.Cart{}
 	}
-
-	v := workflow.GetVersion(ctx, "cartID", workflow.DefaultVersion, 1)
-	// А вот это нужно, чтобы реплей работал
-	if !workflow.IsReplaying(ctx) {
-		v = 1
+	w.cart.Products = products
+	w.cart.Total = total
+	// Если уже идентификатор задан, то скипаем
+	if w.cart.Id != "" {
+		return w.cart, nil
 	}
+	// Берем динамически создание версии
+	versionID := workflow.GetCurrentUpdateInfo(ctx).ID
+	v := workflow.GetVersion(ctx, fmt.Sprintf("cartUpdate-%s", versionID), workflow.DefaultVersion, 1)
 	if v > 0 {
 		encodedValue := workflow.SideEffect(ctx, func(ctx workflow.Context) interface{} {
 			return uuid.NewString()
@@ -67,7 +72,6 @@ func (w *Workflow) UpdateCart(ctx workflow.Context, request *temporal.UpdateCart
 			return nil, err
 		}
 	}
-
 	return w.cart, nil
 }
 
