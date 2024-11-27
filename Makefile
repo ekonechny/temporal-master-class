@@ -45,3 +45,6 @@ worker:
 
 server:
 	go run server/main.go
+
+# make -j3 all
+all: temporal-dev-server worker server
