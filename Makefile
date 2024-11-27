@@ -57,5 +57,10 @@ server:
 test:
 	@go test ./internal/... -cover -short -count=1
 
-# make -j3 all
-all: temporal-dev-server worker server
+# make -j4 all
+all: temporal-dev-server create-search-attributes worker server
+
+# Ленивый хак, чтобы дождаться пока запустится temporal-dev-server и создать там индексы
+sleep:
+	@sleep 1
+
