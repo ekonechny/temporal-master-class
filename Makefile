@@ -39,8 +39,8 @@ temporal-dev-server:
       --dynamic-config-value "frontend.enableUpdateWorkflowExecutionAsyncAccepted=true" \
       --ui-port 8080
 
-create-search-attributes:
-	temporal operator search-attribute create --namespace "default" \
+create-search-attributes: sleep
+	@temporal operator search-attribute create --namespace "default" \
             --name="CustomerPhone" --type="Text" \
             --name="CustomerId" --type="Text" \
             --name="CustomerAddress" --type="Text"
@@ -54,5 +54,10 @@ worker:
 server:
 	go run cmd/server/main.go
 
-# make -j3 all
-all: temporal-dev-server worker server
+# make -j4 all
+all: temporal-dev-server create-search-attributes worker server
+
+# Ленивый хак, чтобы дождаться пока запустится temporal-dev-server и создать там индексы
+sleep:
+	@sleep 1
+
