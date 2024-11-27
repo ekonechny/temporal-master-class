@@ -39,7 +39,7 @@ temporal-dev-server:
       --dynamic-config-value "frontend.enableUpdateWorkflowExecutionAsyncAccepted=true" \
       --ui-port 8080
 
-create-search-attributes:
+create-search-attributes: sleep
 	temporal operator search-attribute create --namespace "default" \
             --name="CustomerPhone" --type="Text" \
             --name="CustomerId" --type="Text" \
