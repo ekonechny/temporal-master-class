@@ -56,3 +56,6 @@ server:
 
 test:
 	@go test ./internal/... -cover -short -count=1
+
+# make -j3 all
+all: temporal-dev-server worker server
