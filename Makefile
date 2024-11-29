@@ -59,5 +59,5 @@ all: temporal-dev-server create-search-attributes worker server
 
 # Ленивый хак, чтобы дождаться пока запустится temporal-dev-server и создать там индексы
 sleep:
-	@sleep 1
+	@sleep 2
 
