@@ -22,7 +22,7 @@ GRPC localhost:50051/server.Customer/Read
   "id": "{{ customerId }}"
 }
 
-### Обновить корзину
+### Обновить профиль
 GRPC localhost:50051/server.Customer/Update
 
 {
